@@ -184,6 +184,10 @@ app.whenReady().then(() => {
     await shell.openPath(path)
   })
 
+  ipcMain.on('shell:showItemInFolder', (_, path: string) => {
+    shell.showItemInFolder(path)
+  })
+
   createWindow()
 
   app.on('activate', function () {

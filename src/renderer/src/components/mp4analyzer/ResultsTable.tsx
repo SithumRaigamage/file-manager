@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react'
-import { Search, ChevronDown, ChevronUp, Eye, FileVideo2 } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Eye, FileVideo2, FolderOpen, Trash2 } from 'lucide-react'
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
+import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 
 interface ResultsTableProps {
   results: Mp4FileResult[]
@@ -33,6 +34,7 @@ function formatDuration(secs: number): string {
 }
 
 export function ResultsTable({ results, onSelectFile }: ResultsTableProps): React.JSX.Element {
+  const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof Mp4FileResult | 'healthScore'>('fileName')
@@ -219,16 +221,51 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                       {r.recommendation.action}
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectFile(r)
-                        }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                        title="View detailed diagnostics"
-                      >
-                        <Eye size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            window.api.showItemInFolder(r.filePath)
+                          }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="Open file location in Finder"
+                        >
+                          <FolderOpen size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onSelectFile(r)
+                          }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="View detailed diagnostics"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        {r.corruptionLevel !== 'healthy' && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                const res = await window.api.mp4analyzer.deleteFile(r.filePath)
+                                if (res.success) {
+                                  if (res.action === 'folder') {
+                                    removeFolderResults(res.folderPath)
+                                  } else if (res.action === 'file') {
+                                    removeResult(res.filePath)
+                                  }
+                                }
+                              } catch (err) {
+                                alert(`Failed to delete: ${(err as Error).message}`)
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-gray-455 hover:text-red-605 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                            title="Delete corrupted video file"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

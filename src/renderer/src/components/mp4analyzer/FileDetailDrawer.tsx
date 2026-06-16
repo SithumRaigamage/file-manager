@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Copy, Check, Info, AlertTriangle, ShieldCheck, Terminal, Layers, PlayCircle, Code2, Hammer, Loader2, Sparkles } from 'lucide-react'
+import { X, Copy, Check, Info, AlertTriangle, ShieldCheck, Terminal, Layers, PlayCircle, Code2, Hammer, Loader2, Sparkles, FolderOpen, Trash2 } from 'lucide-react'
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
+import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 
 interface FileDetailDrawerProps {
   file: Mp4FileResult | null
@@ -32,6 +33,7 @@ function formatDuration(secs: number): string {
 }
 
 export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailDrawerProps): React.JSX.Element {
+  const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'diagnostics' | 'player' | 'structure' | 'logs'>('diagnostics')
   
@@ -153,12 +155,44 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                   {file.filePath}
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 transition-all cursor-pointer inline-flex items-center justify-center"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => window.api.showItemInFolder(file.filePath)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                  title="Open file location in Finder"
+                >
+                  <FolderOpen size={18} />
+                </button>
+                {file.corruptionLevel !== 'healthy' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await window.api.mp4analyzer.deleteFile(file.filePath)
+                        if (res.success) {
+                          if (res.action === 'folder') {
+                            removeFolderResults(res.folderPath)
+                          } else if (res.action === 'file') {
+                            removeResult(res.filePath)
+                          }
+                          onClose()
+                        }
+                      } catch (err) {
+                        alert(`Failed to delete: ${(err as Error).message}`)
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-655 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                    title="Delete corrupted video file"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 transition-all cursor-pointer inline-flex items-center justify-center"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Sub-Header Tabs */}
@@ -498,7 +532,38 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/30 text-right">
+            <div className="p-4 border-t border-gray-100 bg-gray-50/30 flex items-center gap-3">
+              <button
+                onClick={() => window.api.showItemInFolder(file.filePath)}
+                className="px-4 py-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-emerald-200 transition-all flex items-center gap-1.5"
+              >
+                <FolderOpen size={14} />
+                Open File Location
+              </button>
+              {file.corruptionLevel !== 'healthy' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await window.api.mp4analyzer.deleteFile(file.filePath)
+                      if (res.success) {
+                        if (res.action === 'folder') {
+                          removeFolderResults(res.folderPath)
+                        } else if (res.action === 'file') {
+                          removeResult(res.filePath)
+                        }
+                        onClose()
+                      }
+                    } catch (err) {
+                      alert(`Failed to delete: ${(err as Error).message}`)
+                    }
+                  }}
+                  className="px-4 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-rose-200 transition-all flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  Delete File
+                </button>
+              )}
+              <div className="flex-1" />
               <button
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all"

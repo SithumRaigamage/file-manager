@@ -7,6 +7,7 @@ const api = {
   openDirectory: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDirectory'),
   openFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('shell:openPath', path),
+  showItemInFolder: (path: string): void => ipcRenderer.send('shell:showItemInFolder', path),
 
   // Organizer
   organizer: {
@@ -64,6 +65,7 @@ const api = {
     exportCsv: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportCsv', results),
     exportJson: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportJson', results),
     runRepair: (filePath: string, command: string) => ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
+    deleteFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:deleteFile', filePath),
     onProgress: (cb: (data: unknown) => void) => {
       ipcRenderer.on('mp4analyzer:progress', (_, data) => cb(data))
       return () => ipcRenderer.removeAllListeners('mp4analyzer:progress')

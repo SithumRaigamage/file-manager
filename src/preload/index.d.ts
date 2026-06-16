@@ -55,6 +55,7 @@ export interface AppAPI {
   openDirectory: () => Promise<string | null>
   openFiles: () => Promise<string[]>
   openPath: (path: string) => Promise<void>
+  showItemInFolder: (path: string) => void
   organizer: {
     preview: (job: OrganizerJob) => Promise<OrganizerPreviewItem[]>
     execute: (
@@ -87,6 +88,7 @@ export interface AppAPI {
     exportCsv: (results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]) => Promise<boolean>
     exportJson: (results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]) => Promise<boolean>
     runRepair: (filePath: string, command: string) => Promise<{ success: boolean; repairedPath: string; error?: string }>
+    deleteFile: (filePath: string) => Promise<{ success: boolean; action: 'none' | 'file' | 'folder'; filePath: string; folderPath: string }>
     onProgress: (cb: (data: import('../renderer/src/types/mp4analyzer').Mp4ScanProgress) => void) => () => void
     onRepairProgress: (cb: (data: { filePath: string; progress: number }) => void) => () => void
   }

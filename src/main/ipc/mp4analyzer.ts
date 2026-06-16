@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as os from 'os'
 import { execFile, spawn, ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import { Mp4FileResult, Mp4Metadata, Mp4PlaybackVerification, Mp4Recommendation, CorruptionLevel } from '../../renderer/src/types/mp4analyzer'
@@ -439,6 +440,40 @@ async function scanDirectory(dirPath: string): Promise<string[]> {
     }
   }
   return results
+}
+
+function isSafeToDeleteFolder(folderPath: string): boolean {
+  const normalized = path.normalize(folderPath).toLowerCase().replace(/\\/g, '/')
+  const homeDir = os.homedir().toLowerCase().replace(/\\/g, '/')
+  
+  // Define absolute directories that should NEVER be deleted
+  const systemDirs = [
+    '/',
+    '/users',
+    '/users/',
+    homeDir,
+    path.join(homeDir, 'desktop').toLowerCase().replace(/\\/g, '/'),
+    path.join(homeDir, 'downloads').toLowerCase().replace(/\\/g, '/'),
+    path.join(homeDir, 'documents').toLowerCase().replace(/\\/g, '/'),
+    path.join(homeDir, 'pictures').toLowerCase().replace(/\\/g, '/'),
+    path.join(homeDir, 'music').toLowerCase().replace(/\\/g, '/'),
+    path.join(homeDir, 'movies').toLowerCase().replace(/\\/g, '/'),
+    '/applications',
+    '/system',
+    '/library'
+  ]
+  
+  if (systemDirs.includes(normalized) || systemDirs.includes(normalized + '/')) {
+    return false
+  }
+  
+  // Do not delete workspace folder or any of its parents
+  const workspacePath = '/users/sithumraigamage/projects/file manager'.toLowerCase()
+  if (workspacePath.startsWith(normalized)) {
+    return false
+  }
+
+  return true
 }
 
 export function registerMp4AnalyzerHandlers(): void {
@@ -885,6 +920,53 @@ export function registerMp4AnalyzerHandlers(): void {
     } catch (err) {
       console.error(err)
       return false
+    }
+  })
+
+  ipcMain.handle('mp4analyzer:deleteFile', async (event, filePath: string): Promise<{ success: boolean; action: 'none' | 'file' | 'folder'; filePath: string; folderPath: string }> => {
+    const folderPath = path.dirname(filePath)
+    try {
+      if (!fs.existsSync(filePath)) {
+        return { success: false, action: 'none', filePath, folderPath }
+      }
+
+      const fileName = path.basename(filePath)
+      const folderName = path.basename(folderPath)
+      const browserWindow = BrowserWindow.fromWebContents(event.sender)
+      
+      const parentSafeToDelete = isSafeToDeleteFolder(folderPath)
+      
+      const buttons = ['Cancel', 'Delete File Only']
+      if (parentSafeToDelete) {
+        buttons.push('Delete File & Folder')
+      }
+      
+      const response = await dialog.showMessageBox(browserWindow!, {
+        type: 'warning',
+        buttons,
+        defaultId: 1,
+        cancelId: 0,
+        title: 'Delete Corrupted Video',
+        message: `Are you sure you want to delete "${fileName}"?`,
+        detail: parentSafeToDelete 
+          ? `You can delete just this video file, or delete its entire containing folder "${folderName}" (WARNING: this will permanently delete all contents inside "${folderName}").`
+          : `This will permanently delete the file from your disk.`
+      })
+      
+      if (response.response === 1) {
+        // Delete File Only
+        fs.unlinkSync(filePath)
+        return { success: true, action: 'file', filePath, folderPath }
+      } else if (response.response === 2 && parentSafeToDelete) {
+        // Delete File & Folder
+        fs.rmSync(folderPath, { recursive: true, force: true })
+        return { success: true, action: 'folder', filePath, folderPath }
+      }
+      
+      return { success: false, action: 'none', filePath, folderPath }
+    } catch (err) {
+      console.error('Failed to delete file/folder:', err)
+      throw err
     }
   })
 }

@@ -30,6 +30,8 @@ interface Mp4AnalyzerState {
   setProgress: (progress: Mp4ScanProgress) => void
   setActiveTab: (tab: 'table' | 'charts' | 'report') => void
   setSelectedFile: (file: Mp4FileResult | null) => void
+  removeResult: (filePath: string) => void
+  removeFolderResults: (folderPath: string) => void
   resetStore: () => void
 }
 
@@ -96,6 +98,28 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set) => ({
   setProgress: (progress) => set({ progress }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setSelectedFile: (selectedFile) => set({ selectedFile }),
+  removeResult: (filePath) =>
+    set((s) => {
+      const newResults = s.results.filter((r) => r.filePath !== filePath)
+      return {
+        results: newResults,
+        summary: calculateSummary(newResults),
+        selectedFile: s.selectedFile?.filePath === filePath ? null : s.selectedFile
+      }
+    }),
+
+  removeFolderResults: (folderPath) =>
+    set((s) => {
+      const normalizedFolder = folderPath.endsWith('/') || folderPath.endsWith('\\') ? folderPath : folderPath + '/'
+      const newResults = s.results.filter((r) => {
+        return r.filePath !== folderPath && !r.filePath.startsWith(normalizedFolder)
+      })
+      return {
+        results: newResults,
+        summary: calculateSummary(newResults),
+        selectedFile: s.selectedFile && (s.selectedFile.filePath === folderPath || s.selectedFile.filePath.startsWith(normalizedFolder)) ? null : s.selectedFile
+      }
+    }),
 
   resetStore: () =>
     set({
