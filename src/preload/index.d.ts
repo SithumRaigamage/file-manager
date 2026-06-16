@@ -80,6 +80,16 @@ export interface AppAPI {
     convert: (job: ConvertJob) => Promise<{ success: boolean; outputPath?: string; error?: string }>
     onProgress: (cb: (data: { progress: number; inputPath: string }) => void) => () => void
   }
+  mp4analyzer: {
+    analyzeFile: (filePath: string) => Promise<import('../renderer/src/types/mp4analyzer').Mp4FileResult>
+    analyzeFolder: (folderPath: string) => Promise<import('../renderer/src/types/mp4analyzer').Mp4FileResult[]>
+    cancel: () => Promise<boolean>
+    exportCsv: (results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]) => Promise<boolean>
+    exportJson: (results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]) => Promise<boolean>
+    runRepair: (filePath: string, command: string) => Promise<{ success: boolean; repairedPath: string; error?: string }>
+    onProgress: (cb: (data: import('../renderer/src/types/mp4analyzer').Mp4ScanProgress) => void) => () => void
+    onRepairProgress: (cb: (data: { filePath: string; progress: number }) => void) => () => void
+  }
 }
 
 declare global {

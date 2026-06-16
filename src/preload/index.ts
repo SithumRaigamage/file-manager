@@ -54,6 +54,24 @@ const api = {
       ipcRenderer.on('searcher:collect-progress', (_, data) => cb(data))
       return () => ipcRenderer.removeAllListeners('searcher:collect-progress')
     }
+  },
+
+  // MP4 Analyzer
+  mp4analyzer: {
+    analyzeFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:analyzeFile', filePath),
+    analyzeFolder: (folderPath: string) => ipcRenderer.invoke('mp4analyzer:analyzeFolder', folderPath),
+    cancel: () => ipcRenderer.invoke('mp4analyzer:cancel'),
+    exportCsv: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportCsv', results),
+    exportJson: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportJson', results),
+    runRepair: (filePath: string, command: string) => ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
+    onProgress: (cb: (data: unknown) => void) => {
+      ipcRenderer.on('mp4analyzer:progress', (_, data) => cb(data))
+      return () => ipcRenderer.removeAllListeners('mp4analyzer:progress')
+    },
+    onRepairProgress: (cb: (data: unknown) => void) => {
+      ipcRenderer.on('mp4analyzer:repairProgress', (_, data) => cb(data))
+      return () => ipcRenderer.removeAllListeners('mp4analyzer:repairProgress')
+    }
   }
 }
 

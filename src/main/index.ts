@@ -1,11 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerOrganizerHandlers } from './ipc/organizer'
 import { registerRenamerHandlers } from './ipc/renamer'
 import { registerConverterHandlers } from './ipc/converter'
 import { registerSearcherHandlers } from './ipc/searcher'
+import { registerMp4AnalyzerHandlers } from './ipc/mp4analyzer'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -49,11 +51,18 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  // Register custom media protocol to play local video/audio files
+  protocol.handle('media', (request) => {
+    const filePath = decodeURIComponent(request.url.replace('media://', ''))
+    return net.fetch(pathToFileURL(filePath).toString())
+  })
+
   // Register all IPC handlers
   registerOrganizerHandlers()
   registerRenamerHandlers()
   registerConverterHandlers()
   registerSearcherHandlers()
+  registerMp4AnalyzerHandlers()
 
   // Dialog handlers
   ipcMain.handle('dialog:openDirectory', async () => {
