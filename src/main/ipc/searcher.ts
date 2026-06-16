@@ -68,8 +68,28 @@ function getAvailableDrives(): Drive[] {
   return drives
 }
 
+const IGNORED_DIRECTORIES = new Set([
+  'node_modules',
+  'library', // macOS ~/Library
+  'appdata', // Windows AppData
+  'local settings',
+  'application data',
+  'dist',
+  'build',
+  'out',
+  'target',
+  'cache',
+  'temp',
+  'tmp',
+  'pkg',
+  'obj'
+])
+
 function generateVariants(query: string): string[] {
-  const q = query.trim().toLowerCase()
+  let q = query.trim().toLowerCase()
+  if (q.startsWith('*')) {
+    q = q.slice(1)
+  }
   return [
     q,
     q.replace(/\s+/g, '_'),
@@ -96,10 +116,18 @@ function walkTree(
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name)
       const nameLower = entry.name.toLowerCase()
-      const searchBase = nameLower.split('.')[0]
+      const ext = path.extname(nameLower)
+      const baseNameWithoutExt = path.basename(nameLower, ext)
 
-      // Exact or variant match only in the part before the first dot
-      const isMatch = variants.some((v) => searchBase.includes(v))
+      const isExtensionMatch = variants.some((v) => {
+        const vClean = v.trim()
+        if (vClean.startsWith('.')) {
+          return ext === vClean
+        }
+        return ext.slice(1) === vClean
+      })
+      const isFilenameMatch = variants.some((v) => baseNameWithoutExt.includes(v))
+      const isMatch = isExtensionMatch || isFilenameMatch
 
       if (isMatch) {
         const stats = fs.statSync(fullPath)
@@ -128,7 +156,12 @@ function walkTree(
       }
 
       // Recurse if directory (and not hidden/system usually, but keeping it simple)
-      if (entry.isDirectory() && !entry.name.startsWith('$') && !entry.name.startsWith('.')) {
+      if (
+        entry.isDirectory() &&
+        !entry.name.startsWith('$') &&
+        !entry.name.startsWith('.') &&
+        !IGNORED_DIRECTORIES.has(entry.name.toLowerCase())
+      ) {
         walkTree(fullPath, rootPath, variants, results, onProgress, state)
       }
     }
@@ -309,12 +342,22 @@ export function registerSearcherHandlers(): void {
           for (const entry of entries) {
             const fullPath = path.join(currentPath, entry.name)
             const nameLower = entry.name.toLowerCase()
-            const searchBase = nameLower.split('.')[0]
+            const ext = path.extname(nameLower)
+            const baseNameWithoutExt = path.basename(nameLower, ext)
             let matchedAny = false
 
             for (const query of queries) {
               const { variants, results } = keywordMap[query]
-              if (variants.some((v) => searchBase.includes(v))) {
+              const isExtensionMatch = variants.some((v) => {
+                const vClean = v.trim()
+                if (vClean.startsWith('.')) {
+                  return ext === vClean
+                }
+                return ext.slice(1) === vClean
+              })
+              const isFilenameMatch = variants.some((v) => baseNameWithoutExt.includes(v))
+
+              if (isExtensionMatch || isFilenameMatch) {
                 const stats = fs.statSync(fullPath)
                 results.push({
                   name: entry.name,
@@ -338,7 +381,12 @@ export function registerSearcherHandlers(): void {
             }
 
             // Recurse
-            if (entry.isDirectory() && !entry.name.startsWith('$') && !entry.name.startsWith('.')) {
+            if (
+              entry.isDirectory() &&
+              !entry.name.startsWith('$') &&
+              !entry.name.startsWith('.') &&
+              !IGNORED_DIRECTORIES.has(entry.name.toLowerCase())
+            ) {
               walkBatch(fullPath, root)
             }
           }

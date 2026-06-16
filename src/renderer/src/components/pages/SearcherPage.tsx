@@ -67,7 +67,7 @@ function formatDate(ms: number): string {
 function getFileIcon(item: SearchResult): React.ReactNode {
   if (item.type === 'folder') return <FolderOpen size={20} className="text-amber-500" />
   const ext = item.extension.replace('.', '').toLowerCase()
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext))
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
     return <FileVideo size={20} className="text-rose-500" />
   if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
     return <FileAudio size={20} className="text-purple-500" />
@@ -85,7 +85,7 @@ function getFileIcon(item: SearchResult): React.ReactNode {
 function getLargeFileIcon(item: SearchResult): React.ReactNode {
   if (item.type === 'folder') return <FolderOpen size={40} className="text-amber-500" />
   const ext = item.extension.replace('.', '').toLowerCase()
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext))
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
     return <FileVideo size={40} className="text-rose-500" />
   if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
     return <FileAudio size={40} className="text-purple-500" />
@@ -104,20 +104,26 @@ function getLargeFileIcon(item: SearchResult): React.ReactNode {
 
 function LargeIconCard({
   item,
-  onRemove
+  onRemove,
+  onSelect
 }: {
   item: SearchResult
   onRemove: (path: string) => void
+  onSelect: (item: SearchResult) => void
 }): React.ReactElement {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 hover:border-violet-200 hover:shadow-md transition-all cursor-default group"
+      onClick={() => onSelect(item)}
+      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
     >
       <button
-        onClick={() => onRemove(item.fullPath)}
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(item.fullPath)
+        }}
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 z-10"
         title="Remove from results"
       >
         <X size={12} />
@@ -139,16 +145,19 @@ function LargeIconCard({
 
 function TileCard({
   item,
-  onRemove
+  onRemove,
+  onSelect
 }: {
   item: SearchResult
   onRemove: (path: string) => void
+  onSelect: (item: SearchResult) => void
 }): React.ReactElement {
   return (
     <motion.div
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      className="relative flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-violet-200 hover:shadow-sm transition-all cursor-default group"
+      onClick={() => onSelect(item)}
+      className="relative flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-md hover:bg-violet-50/10 active:scale-98 cursor-pointer transition-all group"
     >
       <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
         {getFileIcon(item)}
@@ -163,14 +172,17 @@ function TileCard({
             : `${item.extension || 'File'} · ${formatBytes(item.size)}`}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 z-10">
         {item.type === 'folder' && item.childCount > 0 && (
           <span className="text-[10px] shrink-0 text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-medium">
             +{item.childCount}
           </span>
         )}
         <button
-          onClick={() => onRemove(item.fullPath)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(item.fullPath)
+          }}
           className="w-7 h-7 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 shrink-0"
           title="Remove from results"
         >
@@ -183,27 +195,33 @@ function TileCard({
 
 function ListRow({
   item,
-  onRemove
+  onRemove,
+  onSelect
 }: {
   item: SearchResult
   onRemove: (path: string) => void
+  onSelect: (item: SearchResult) => void
 }): React.ReactElement {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-default group"
+      onClick={() => onSelect(item)}
+      className="flex items-center gap-3 px-4 py-2 hover:bg-violet-50/30 transition-colors border-b border-gray-50 last:border-0 cursor-pointer group"
     >
       {getFileIcon(item)}
       <span className="text-sm text-gray-700 truncate flex-1">{item.name}</span>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 z-10">
         {item.type === 'folder' && item.childCount > 0 && (
           <span className="text-[10px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full font-medium shrink-0">
             +{item.childCount}
           </span>
         )}
         <button
-          onClick={() => onRemove(item.fullPath)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(item.fullPath)
+          }}
           className="w-6 h-6 rounded-md bg-transparent text-gray-300 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shrink-0"
           title="Remove from results"
         >
@@ -216,10 +234,12 @@ function ListRow({
 
 function DetailsTable({
   results,
-  onRemove
+  onRemove,
+  onSelect
 }: {
   results: SearchResult[]
   onRemove: (path: string) => void
+  onSelect: (item: SearchResult) => void
 }): React.ReactElement {
   return (
     <div className="overflow-auto flex-1">
@@ -244,7 +264,8 @@ function DetailsTable({
               key={item.fullPath}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors cursor-default group"
+              onClick={() => onSelect(item)}
+              className="border-b border-gray-50 hover:bg-violet-50/20 transition-colors cursor-pointer group"
             >
               <td className="px-4 py-2 flex items-center gap-2 min-w-0">
                 {getFileIcon(item)}
@@ -271,7 +292,10 @@ function DetailsTable({
               </td>
               <td className="px-4 py-2 whitespace-nowrap text-right">
                 <button
-                  onClick={() => onRemove(item.fullPath)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemove(item.fullPath)
+                  }}
                   className="w-8 h-8 rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center ml-auto"
                 >
                   <X size={14} />
@@ -287,10 +311,12 @@ function DetailsTable({
 
 function TreeView({
   results,
-  onRemove
+  onRemove,
+  onSelect
 }: {
   results: SearchResult[]
   onRemove: (path: string) => void
+  onSelect: (item: SearchResult) => void
 }): React.ReactElement {
   // Build a tree structure grouped by parentPath
   const grouped = new Map<string, SearchResult[]>()
@@ -327,7 +353,8 @@ function TreeView({
                   key={item.fullPath}
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-violet-200 hover:shadow-sm transition-all cursor-default group"
+                  onClick={() => onSelect(item)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-violet-300 hover:shadow-sm hover:bg-violet-50/10 active:scale-99 transition-all cursor-pointer group"
                 >
                   {getFileIcon(item)}
                   <span className="text-sm text-gray-800 font-medium truncate flex-1">
@@ -345,7 +372,10 @@ function TreeView({
                       </span>
                     )}
                     <button
-                      onClick={() => onRemove(item.fullPath)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRemove(item.fullPath)
+                      }}
                       className="w-6 h-6 rounded-md bg-transparent text-gray-300 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shrink-0"
                     >
                       <X size={12} />
@@ -612,6 +642,18 @@ export function SearcherPage(): React.ReactElement {
   const [automationStep, setAutomationStep] = useState(0)
   const [automationStatus, setAutomationStatus] = useState('')
   const [automationLog, setAutomationLog] = useState<{ msg: string; type: 'info' | 'success' | 'error' }[]>([])
+
+  const [activePlaybackVideo, setActivePlaybackVideo] = useState<SearchResult | null>(null)
+
+  const handleItemSelect = useCallback((item: SearchResult) => {
+    const ext = item.extension.replace('.', '').toLowerCase()
+    const isVideo = item.type === 'file' && ['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext)
+    if (isVideo) {
+      setActivePlaybackVideo(item)
+    } else {
+      window.api.openPath?.(item.fullPath)
+    }
+  }, [])
 
   const handlePickImportRoot = async (): Promise<void> => {
     const folder = await window.api.openDirectory()
@@ -1207,7 +1249,7 @@ export function SearcherPage(): React.ReactElement {
                   {viewMode === 'large-icons' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3 content-start">
                       {results.map((item) => (
-                        <LargeIconCard key={item.fullPath} item={item} onRemove={removeResult} />
+                        <LargeIconCard key={item.fullPath} item={item} onRemove={removeResult} onSelect={handleItemSelect} />
                       ))}
                     </div>
                   )}
@@ -1215,7 +1257,7 @@ export function SearcherPage(): React.ReactElement {
                   {viewMode === 'tiles' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 content-start">
                       {results.map((item) => (
-                        <TileCard key={item.fullPath} item={item} onRemove={removeResult} />
+                        <TileCard key={item.fullPath} item={item} onRemove={removeResult} onSelect={handleItemSelect} />
                       ))}
                     </div>
                   )}
@@ -1224,17 +1266,17 @@ export function SearcherPage(): React.ReactElement {
                     <div className="p-4">
                       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                         {results.map((item) => (
-                          <ListRow key={item.fullPath} item={item} onRemove={removeResult} />
+                          <ListRow key={item.fullPath} item={item} onRemove={removeResult} onSelect={handleItemSelect} />
                         ))}
                       </div>
                     </div>
                   )}
 
                   {viewMode === 'details' && (
-                    <DetailsTable results={results} onRemove={removeResult} />
+                    <DetailsTable results={results} onRemove={removeResult} onSelect={handleItemSelect} />
                   )}
 
-                  {viewMode === 'tree' && <TreeView results={results} onRemove={removeResult} />}
+                  {viewMode === 'tree' && <TreeView results={results} onRemove={removeResult} onSelect={handleItemSelect} />}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1504,6 +1546,77 @@ export function SearcherPage(): React.ReactElement {
             collectResult={collectResult}
             onClose={handleCloseModal}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Searcher Video Player Modal */}
+      <AnimatePresence>
+        {activePlaybackVideo && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActivePlaybackVideo(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 cursor-pointer animate-fade-in"
+            />
+            {/* Modal Body */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-3xl mx-auto bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl z-50 flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/50 text-white">
+                <div className="min-w-0 pr-4">
+                  <h3 className="text-sm font-bold truncate">
+                    {activePlaybackVideo.name}
+                  </h3>
+                  <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                    {activePlaybackVideo.fullPath}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActivePlaybackVideo(null)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all cursor-pointer inline-flex items-center justify-center"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Video Player */}
+              <div className="aspect-video bg-black flex items-center justify-center">
+                <video
+                  src={`media://${activePlaybackVideo.fullPath}`}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-contain"
+                  preload="metadata"
+                />
+              </div>
+
+              {/* Playback Notice Block */}
+              <div className="px-4 pb-1 pt-3 bg-gray-900">
+                <div className="p-3 rounded-xl bg-blue-950/20 border border-blue-900/40 space-y-1 text-[11px] leading-relaxed text-blue-300">
+                  <div className="font-bold text-blue-200 flex items-center gap-1.5">
+                    <PlayCircle size={13} /> Playback notice
+                  </div>
+                  <div>
+                    Chromium decodes H.264 streams and AAC audio wrappers natively. If the video uses advanced formats (HEVC, H.265), compatibility depends on your hardware acceleration status.
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Info */}
+              <div className="p-4 bg-gray-950/60 border-t border-gray-850 flex items-center justify-between text-[11px] text-gray-400">
+                <span>Size: {formatBytes(activePlaybackVideo.size)}</span>
+                <span className="font-mono">{activePlaybackVideo.extension.toUpperCase()} Format</span>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

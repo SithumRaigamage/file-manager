@@ -16,7 +16,7 @@ export function formatBytes(bytes: number, decimals = 2): string {
 
 export function getFileIcon(ext: string): string {
   const e = ext.toLowerCase().replace('.', '')
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv'].includes(e)) return '🎬'
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'vid'].includes(e)) return '🎬'
   if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(e)) return '🎵'
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(e)) return '🖼️'
   if (['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'rtf'].includes(e)) return '📄'
