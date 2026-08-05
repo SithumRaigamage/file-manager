@@ -1,7 +1,14 @@
 import { useEffect } from 'react'
 import {
-  FolderOpen, Plus, Play, X, CheckCircle2, XCircle,
-  AlertTriangle, RefreshCw, ChevronDown
+  FolderOpen,
+  Plus,
+  Play,
+  X,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useConverterStore } from '../../store/converterStore'
@@ -20,9 +27,20 @@ const STATUS_CONFIG = {
 
 export function ConverterPage(): React.JSX.Element {
   const {
-    ffmpegAvailable, jobs, outputDir, videoQuality, audioQuality,
-    setFFmpegStatus, addJobs, removeJob, updateJob, setOutputDir,
-    setVideoQuality, setAudioQuality, clearCompleted, clearAll
+    ffmpegAvailable,
+    jobs,
+    outputDir,
+    videoQuality,
+    audioQuality,
+    setFFmpegStatus,
+    addJobs,
+    removeJob,
+    updateJob,
+    setOutputDir,
+    setVideoQuality,
+    setAudioQuality,
+    clearCompleted,
+    clearAll
   } = useConverterStore()
 
   // Check ffmpeg on mount
@@ -93,7 +111,9 @@ export function ConverterPage(): React.JSX.Element {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">File Converter</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Convert video and audio to different formats using ffmpeg</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Convert video and audio to different formats using ffmpeg
+            </p>
           </div>
           {jobs.length > 0 && (
             <div className="flex gap-2">
@@ -174,7 +194,9 @@ export function ConverterPage(): React.JSX.Element {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 block mb-1.5">🎬 Video Quality</label>
+                    <label className="text-xs font-medium text-gray-600 block mb-1.5">
+                      🎬 Video Quality
+                    </label>
                     <div className="space-y-1">
                       {(['high', 'medium', 'low'] as const).map((q) => (
                         <button
@@ -191,7 +213,9 @@ export function ConverterPage(): React.JSX.Element {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 block mb-1.5">🎵 Audio Quality</label>
+                    <label className="text-xs font-medium text-gray-600 block mb-1.5">
+                      🎵 Audio Quality
+                    </label>
                     <div className="space-y-1">
                       {(['high', 'medium', 'low'] as const).map((q) => (
                         <button
@@ -222,7 +246,10 @@ export function ConverterPage(): React.JSX.Element {
                     className="w-full h-20 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-3 hover:border-emerald-300 hover:bg-emerald-50 transition-all group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     id="converter-add-files-btn"
                   >
-                    <Plus size={20} className="text-gray-300 group-hover:text-emerald-400 transition-colors" />
+                    <Plus
+                      size={20}
+                      className="text-gray-300 group-hover:text-emerald-400 transition-colors"
+                    />
                     <span className="text-sm text-gray-400 group-hover:text-emerald-500">
                       Add files to convert
                     </span>
@@ -239,7 +266,9 @@ export function ConverterPage(): React.JSX.Element {
                       <div className="flex gap-2">
                         {doneCount > 0 && <Badge variant="success">{doneCount} done</Badge>}
                         {errorCount > 0 && <Badge variant="destructive">{errorCount} failed</Badge>}
-                        {pendingCount > 0 && <Badge variant="secondary">{pendingCount} pending</Badge>}
+                        {pendingCount > 0 && (
+                          <Badge variant="secondary">{pendingCount} pending</Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -259,45 +288,71 @@ export function ConverterPage(): React.JSX.Element {
                               <div className="flex items-start gap-3">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-medium text-gray-800 truncate">{job.inputName}</p>
+                                    <p className="text-sm font-medium text-gray-800 truncate">
+                                      {job.inputName}
+                                    </p>
                                     <div className="flex items-center gap-1 shrink-0">
-                                      <span className="text-xs text-gray-400">.{job.inputPath.split('.').pop()}</span>
+                                      <span className="text-xs text-gray-400">
+                                        .{job.inputPath.split('.').pop()}
+                                      </span>
                                       <RefreshCw size={10} className="text-gray-300" />
                                       {/* Output format selector */}
                                       <div className="relative">
                                         <select
                                           value={job.outputFormat}
-                                          onChange={(e) => updateJob(job.id, { outputFormat: e.target.value })}
+                                          onChange={(e) =>
+                                            updateJob(job.id, { outputFormat: e.target.value })
+                                          }
                                           disabled={job.status !== 'pending'}
                                           className="text-xs text-emerald-600 font-medium bg-transparent border-none outline-none cursor-pointer appearance-none pr-3"
                                         >
                                           {allFormats.map((f) => (
-                                            <option key={f} value={f}>.{f}</option>
+                                            <option key={f} value={f}>
+                                              .{f}
+                                            </option>
                                           ))}
                                         </select>
-                                        <ChevronDown size={10} className="absolute right-0 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                                        <ChevronDown
+                                          size={10}
+                                          className="absolute right-0 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none"
+                                        />
                                       </div>
                                     </div>
                                   </div>
 
                                   {job.status === 'converting' && (
-                                    <Progress value={job.progress} max={100} color="green" className="mt-1.5" />
+                                    <Progress
+                                      value={job.progress}
+                                      max={100}
+                                      color="green"
+                                      className="mt-1.5"
+                                    />
                                   )}
                                   {job.status === 'error' && (
-                                    <p className="text-xs text-red-600 mt-1 truncate">{job.error}</p>
+                                    <p className="text-xs text-red-600 mt-1 truncate">
+                                      {job.error}
+                                    </p>
                                   )}
                                   {job.status === 'done' && job.outputPath && (
-                                    <p className="text-xs text-green-600 mt-1 truncate">→ {job.outputPath}</p>
+                                    <p className="text-xs text-green-600 mt-1 truncate">
+                                      → {job.outputPath}
+                                    </p>
                                   )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+                                  <span className={`text-xs font-medium ${status.color}`}>
+                                    {status.label}
+                                  </span>
                                   {job.status === 'converting' && (
                                     <span className="text-xs text-gray-500">{job.progress}%</span>
                                   )}
-                                  {job.status === 'done' && <CheckCircle2 size={16} className="text-green-500" />}
-                                  {job.status === 'error' && <XCircle size={16} className="text-red-500" />}
+                                  {job.status === 'done' && (
+                                    <CheckCircle2 size={16} className="text-green-500" />
+                                  )}
+                                  {job.status === 'error' && (
+                                    <XCircle size={16} className="text-red-500" />
+                                  )}
                                   <button
                                     onClick={() => removeJob(job.id)}
                                     disabled={job.status === 'converting'}
@@ -345,9 +400,7 @@ export function ConverterPage(): React.JSX.Element {
             Select an output folder to start
           </p>
         )}
-        {ffmpegAvailable === null && (
-          <p className="text-xs text-gray-400">Checking for ffmpeg…</p>
-        )}
+        {ffmpegAvailable === null && <p className="text-xs text-gray-400">Checking for ffmpeg…</p>}
       </div>
     </div>
   )

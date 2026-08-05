@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @layer base {
   :root {
@@ -13,7 +13,9 @@
     padding: 0;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

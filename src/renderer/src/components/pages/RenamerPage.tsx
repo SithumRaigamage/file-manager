@@ -1,7 +1,18 @@
 import React, { useCallback, useEffect } from 'react'
 import {
-  FolderOpen, Play, RotateCcw, CheckCircle2, XCircle, AlertCircle, Undo2,
-  List, Type, SortAsc, SortDesc, Calendar, Hash
+  FolderOpen,
+  Play,
+  RotateCcw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Undo2,
+  List,
+  Type,
+  SortAsc,
+  SortDesc,
+  Calendar,
+  Hash
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRenamerStore } from '../../store/renamerStore'
@@ -20,10 +31,27 @@ const PATTERN_TYPES = [
 
 export function RenamerPage(): React.JSX.Element {
   const {
-    sourceDir, files, selectedPaths, pattern, preview, lastExecuted,
-    isLoading, isExecuting, result,
-    setSourceDir, setFiles, toggleFile, selectAll, deselectAll,
-    setPattern, setPreview, setLastExecuted, setIsLoading, setIsExecuting, setResult, reset
+    sourceDir,
+    files,
+    selectedPaths,
+    pattern,
+    preview,
+    lastExecuted,
+    isLoading,
+    isExecuting,
+    result,
+    setSourceDir,
+    setFiles,
+    toggleFile,
+    selectAll,
+    deselectAll,
+    setPattern,
+    setPreview,
+    setLastExecuted,
+    setIsLoading,
+    setIsExecuting,
+    setResult,
+    reset
   } = useRenamerStore()
 
   const handleSelectDirectory = async (): Promise<void> => {
@@ -47,7 +75,10 @@ export function RenamerPage(): React.JSX.Element {
     }
     setIsLoading(true)
     try {
-      const items = await window.api.renamer.preview(selected.map((f) => f.path), pattern)
+      const items = await window.api.renamer.preview(
+        selected.map((f) => f.path),
+        pattern
+      )
       setPreview(items)
     } finally {
       setIsLoading(false)
@@ -102,7 +133,9 @@ export function RenamerPage(): React.JSX.Element {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Bulk Renamer</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Rename multiple files with powerful patterns</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Rename multiple files with powerful patterns
+            </p>
           </div>
           <div className="flex gap-2">
             {lastExecuted.length > 0 && (
@@ -138,13 +171,17 @@ export function RenamerPage(): React.JSX.Element {
                   <AlertCircle size={20} className="text-amber-600 mt-0.5 shrink-0" />
                 )}
                 <div>
-                  <p className={`font-semibold text-sm ${result.success ? 'text-green-800' : 'text-amber-800'}`}>
+                  <p
+                    className={`font-semibold text-sm ${result.success ? 'text-green-800' : 'text-amber-800'}`}
+                  >
                     {result.renamed} files renamed successfully
                   </p>
                   {result.errors.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {result.errors.slice(0, 3).map((e, i) => (
-                        <li key={i} className="text-xs text-red-600">{e}</li>
+                        <li key={i} className="text-xs text-red-600">
+                          {e}
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -167,7 +204,12 @@ export function RenamerPage(): React.JSX.Element {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="outline" className="w-full mb-3" onClick={handleSelectDirectory} id="renamer-select-folder-btn">
+                  <Button
+                    variant="outline"
+                    className="w-full mb-3"
+                    onClick={handleSelectDirectory}
+                    id="renamer-select-folder-btn"
+                  >
                     <FolderOpen size={16} />
                     {sourceDir ? sourceDir.split('/').pop() : 'Choose Folder'}
                   </Button>
@@ -175,13 +217,25 @@ export function RenamerPage(): React.JSX.Element {
                   {files.length > 0 && (
                     <>
                       <div className="flex gap-2 mb-2">
-                        <Button size="sm" variant="ghost" onClick={selectAll} className="text-xs text-violet-600">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={selectAll}
+                          className="text-xs text-violet-600"
+                        >
                           Select All
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={deselectAll} className="text-xs text-gray-400">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={deselectAll}
+                          className="text-xs text-gray-400"
+                        >
                           Deselect All
                         </Button>
-                        <Badge variant="secondary" className="ml-auto">{selectedCount} selected</Badge>
+                        <Badge variant="secondary" className="ml-auto">
+                          {selectedCount} selected
+                        </Badge>
                       </div>
                       <div className="border border-gray-100 rounded-xl overflow-hidden">
                         <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
@@ -191,15 +245,24 @@ export function RenamerPage(): React.JSX.Element {
                               onClick={() => toggleFile(file.path)}
                               className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer ${selectedPaths.has(file.path) ? 'bg-violet-50' : 'hover:bg-gray-50'}`}
                             >
-                              <div className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center ${selectedPaths.has(file.path) ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}>
+                              <div
+                                className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center ${selectedPaths.has(file.path) ? 'bg-violet-500 border-violet-500' : 'border-gray-300'}`}
+                              >
                                 {selectedPaths.has(file.path) && (
                                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                    <path d="M1 4L3 6L7 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                                    <path
+                                      d="M1 4L3 6L7 2"
+                                      stroke="white"
+                                      strokeWidth="1.5"
+                                      strokeLinecap="round"
+                                    />
                                   </svg>
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-medium text-gray-700 truncate">{file.name}</p>
+                                <p className="text-xs font-medium text-gray-700 truncate">
+                                  {file.name}
+                                </p>
                                 <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
                               </div>
                             </button>
@@ -232,9 +295,18 @@ export function RenamerPage(): React.JSX.Element {
                         onClick={() => setPattern({ type })}
                         className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all cursor-pointer ${pattern.type === type ? 'border-violet-400 bg-violet-50' : 'border-gray-100 hover:border-gray-200'}`}
                       >
-                        <Icon size={16} className={pattern.type === type ? 'text-violet-600' : 'text-gray-400'} />
-                        <span className={`text-xs font-medium leading-tight text-center ${pattern.type === type ? 'text-violet-700' : 'text-gray-600'}`}>{label}</span>
-                        <span className="text-[10px] text-gray-400 text-center leading-tight">{description}</span>
+                        <Icon
+                          size={16}
+                          className={pattern.type === type ? 'text-violet-600' : 'text-gray-400'}
+                        />
+                        <span
+                          className={`text-xs font-medium leading-tight text-center ${pattern.type === type ? 'text-violet-700' : 'text-gray-600'}`}
+                        >
+                          {label}
+                        </span>
+                        <span className="text-[10px] text-gray-400 text-center leading-tight">
+                          {description}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -245,7 +317,9 @@ export function RenamerPage(): React.JSX.Element {
                       <>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-medium text-gray-700 block mb-1">Base Name</label>
+                            <label className="text-xs font-medium text-gray-700 block mb-1">
+                              Base Name
+                            </label>
                             <input
                               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 focus:border-transparent outline-none"
                               placeholder="e.g. movie"
@@ -254,18 +328,24 @@ export function RenamerPage(): React.JSX.Element {
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-700 block mb-1">Start From</label>
+                            <label className="text-xs font-medium text-gray-700 block mb-1">
+                              Start From
+                            </label>
                             <input
                               type="number"
                               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 outline-none"
                               value={pattern.startIndex}
                               min={0}
-                              onChange={(e) => setPattern({ startIndex: parseInt(e.target.value) || 1 })}
+                              onChange={(e) =>
+                                setPattern({ startIndex: parseInt(e.target.value) || 1 })
+                              }
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-gray-700 block mb-1">Separator</label>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">
+                            Separator
+                          </label>
                           <div className="flex gap-2">
                             {['_', '-', '.', ''].map((sep) => (
                               <button
@@ -279,14 +359,23 @@ export function RenamerPage(): React.JSX.Element {
                           </div>
                         </div>
                         <div className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-xs text-gray-500">Preview: <span className="font-medium text-gray-700">{pattern.prefix || 'file'}{pattern.separator}{pattern.startIndex}.ext</span></p>
+                          <p className="text-xs text-gray-500">
+                            Preview:{' '}
+                            <span className="font-medium text-gray-700">
+                              {pattern.prefix || 'file'}
+                              {pattern.separator}
+                              {pattern.startIndex}.ext
+                            </span>
+                          </p>
                         </div>
                       </>
                     )}
 
                     {pattern.type === 'prefix' && (
                       <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Prefix to Add</label>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">
+                          Prefix to Add
+                        </label>
                         <input
                           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 outline-none"
                           placeholder="e.g. 2024_"
@@ -298,7 +387,9 @@ export function RenamerPage(): React.JSX.Element {
 
                     {pattern.type === 'suffix' && (
                       <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Suffix to Add</label>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">
+                          Suffix to Add
+                        </label>
                         <input
                           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 outline-none"
                           placeholder="e.g. _backup"
@@ -311,7 +402,9 @@ export function RenamerPage(): React.JSX.Element {
                     {pattern.type === 'replace' && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs font-medium text-gray-700 block mb-1">Find Text</label>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">
+                            Find Text
+                          </label>
                           <input
                             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 outline-none"
                             placeholder="Text to find"
@@ -320,7 +413,9 @@ export function RenamerPage(): React.JSX.Element {
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-gray-700 block mb-1">Replace With</label>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">
+                            Replace With
+                          </label>
                           <input
                             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-violet-400 outline-none"
                             placeholder="Replacement"
@@ -333,7 +428,9 @@ export function RenamerPage(): React.JSX.Element {
 
                     {pattern.type === 'date' && (
                       <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Date Format</label>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">
+                          Date Format
+                        </label>
                         <div className="flex flex-wrap gap-2">
                           {['YYYY-MM-DD', 'DD-MM-YYYY', 'MM-DD-YYYY', 'YYYY_MM_DD'].map((fmt) => (
                             <button
@@ -350,7 +447,9 @@ export function RenamerPage(): React.JSX.Element {
 
                     {/* Extension handling */}
                     <div>
-                      <label className="text-xs font-medium text-gray-700 block mb-1">Extension Case</label>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Extension Case
+                      </label>
                       <div className="flex gap-2">
                         {(['keep', 'lowercase', 'uppercase'] as const).map((opt) => (
                           <button
@@ -396,7 +495,9 @@ export function RenamerPage(): React.JSX.Element {
                               className={`grid grid-cols-[1fr_1fr_auto] items-center gap-x-2 px-3 py-2 text-xs ${item.conflict ? 'bg-red-50' : 'hover:bg-gray-50'}`}
                             >
                               <span className="truncate text-gray-600">{item.oldName}</span>
-                              <span className={`truncate font-medium ${item.conflict ? 'text-red-600' : 'text-violet-600'}`}>
+                              <span
+                                className={`truncate font-medium ${item.conflict ? 'text-red-600' : 'text-violet-600'}`}
+                              >
                                 {item.newName}
                               </span>
                               {item.conflict ? (
@@ -425,7 +526,9 @@ export function RenamerPage(): React.JSX.Element {
           id="renamer-execute-btn"
         >
           <Play size={16} />
-          {isExecuting ? 'Renaming…' : `Rename ${preview.length > 0 ? preview.length + ' Files' : ''}`}
+          {isExecuting
+            ? 'Renaming…'
+            : `Rename ${preview.length > 0 ? preview.length + ' Files' : ''}`}
         </Button>
         {conflictCount > 0 && (
           <p className="text-xs text-red-500">

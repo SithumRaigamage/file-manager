@@ -65,8 +65,10 @@ export function SummaryCards({ summary }: SummaryCardsProps): React.JSX.Element 
             className="relative overflow-hidden bg-white border border-gray-100/80 rounded-2xl p-5 shadow-xs transition-shadow hover:shadow-md"
           >
             {/* Soft decorative background shape */}
-            <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br ${card.color} opacity-[0.03] pointer-events-none`} />
-            
+            <div
+              className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br ${card.color} opacity-[0.03] pointer-events-none`}
+            />
+
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${card.bgColor} ${card.textColor}`}>
                 <Icon size={20} className="stroke-[2.2]" />
@@ -77,9 +79,7 @@ export function SummaryCards({ summary }: SummaryCardsProps): React.JSX.Element 
             </div>
 
             <div className="mt-4 flex items-baseline justify-between">
-              <span className="text-3xl font-bold text-gray-900 tracking-tight">
-                {card.value}
-              </span>
+              <span className="text-3xl font-bold text-gray-900 tracking-tight">{card.value}</span>
               {summary.totalFiles > 0 && card.label !== 'Total Scanned' && (
                 <span className="text-xs font-medium text-gray-400">
                   {Math.round((card.value / summary.totalFiles) * 100)}%
