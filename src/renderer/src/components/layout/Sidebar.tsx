@@ -74,9 +74,7 @@ export function Sidebar(): React.ReactElement {
       <nav className="flex-1 px-3 py-2 space-y-1">
         {navItems.map((item) => {
           const isActive =
-            item.to === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.to)
+            item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
 
           return (
             <NavLink
@@ -84,9 +82,7 @@ export function Sidebar(): React.ReactElement {
               to={item.to}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group cursor-pointer',
-                isActive
-                  ? `${item.activeBg}`
-                  : 'hover:bg-white hover:shadow-sm'
+                isActive ? `${item.activeBg}` : 'hover:bg-white hover:shadow-sm'
               )}
             >
               {isActive && (

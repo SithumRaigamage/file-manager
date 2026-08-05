@@ -60,12 +60,16 @@ const api = {
   // MP4 Analyzer
   mp4analyzer: {
     analyzeFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:analyzeFile', filePath),
-    analyzeFolder: (folderPath: string) => ipcRenderer.invoke('mp4analyzer:analyzeFolder', folderPath),
+    analyzeFolder: (folderPath: string) =>
+      ipcRenderer.invoke('mp4analyzer:analyzeFolder', folderPath),
     cancel: () => ipcRenderer.invoke('mp4analyzer:cancel'),
     exportCsv: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportCsv', results),
     exportJson: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportJson', results),
-    runRepair: (filePath: string, command: string) => ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
+    runRepair: (filePath: string, command: string) =>
+      ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
     deleteFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:deleteFile', filePath),
+    deleteMultipleFiles: (filePaths: string[], scannedFolder: string | null) =>
+      ipcRenderer.invoke('mp4analyzer:deleteMultipleFiles', filePaths, scannedFolder),
     onProgress: (cb: (data: unknown) => void) => {
       ipcRenderer.on('mp4analyzer:progress', (_, data) => cb(data))
       return () => ipcRenderer.removeAllListeners('mp4analyzer:progress')

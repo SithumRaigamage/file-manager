@@ -22,7 +22,7 @@ function formatDuration(secs: number): string {
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
   const s = Math.floor(secs % 60)
-  
+
   const mStr = m.toString().padStart(2, '0')
   const sStr = s.toString().padStart(2, '0')
 
@@ -34,13 +34,15 @@ function formatDuration(secs: number): string {
 }
 
 export function ResultsTable({ results, onSelectFile }: ResultsTableProps): React.JSX.Element {
-  const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
+  const { removeResult, removeFolderResults, scannedFolder } = useMp4AnalyzerStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof Mp4FileResult | 'healthScore'>('fileName')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const getCorruptionColor = (level: CorruptionLevel) => {
+  const getCorruptionColor = (
+    level: CorruptionLevel
+  ): 'success' | 'warning' | 'destructive' | 'secondary' => {
     switch (level) {
       case 'healthy':
         return 'success' as const
@@ -57,19 +59,44 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
     }
   }
 
-  const getHealthBarColor = (score: number) => {
+  const getHealthBarColor = (score: number): string => {
     if (score > 98) return 'bg-emerald-500'
     if (score >= 90) return 'bg-yellow-500'
     if (score >= 70) return 'bg-orange-500'
     return 'bg-red-500'
   }
 
-  const handleSort = (field: keyof Mp4FileResult | 'healthScore') => {
+  const handleSort = (field: keyof Mp4FileResult | 'healthScore'): void => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
       setSortField(field)
       setSortOrder('asc')
+    }
+  }
+
+  const corruptedFiles = useMemo(() => {
+    return results.filter((r) => r.corruptionLevel !== 'healthy')
+  }, [results])
+
+  const corruptedFilesCount = corruptedFiles.length
+
+  const handleDeleteAllCorrupted = async (): Promise<void> => {
+    const filePaths = corruptedFiles.map((r) => r.filePath)
+    if (filePaths.length === 0) return
+
+    try {
+      const res = await window.api.mp4analyzer.deleteMultipleFiles(filePaths, scannedFolder)
+      if (res.success) {
+        res.deletedFolders.forEach((folder) => {
+          removeFolderResults(folder)
+        })
+        res.deletedFiles.forEach((file) => {
+          removeResult(file)
+        })
+      }
+    } catch (err) {
+      alert(`Failed to delete files: ${(err as Error).message}`)
     }
   }
 
@@ -81,7 +108,9 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         return matchesSearch && matchesStatus
       })
       .sort((a, b) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let valA: any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let valB: any
 
         if (sortField === 'healthScore') {
@@ -93,18 +122,20 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         }
 
         if (typeof valA === 'string') {
-          return sortOrder === 'asc'
-            ? valA.localeCompare(valB)
-            : valB.localeCompare(valA)
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
         }
 
         return sortOrder === 'asc' ? valA - valB : valB - valA
       })
   }, [results, searchTerm, statusFilter, sortField, sortOrder])
 
-  const SortIcon = ({ field }: { field: keyof Mp4FileResult | 'healthScore' }) => {
+  const renderSortIcon = (field: keyof Mp4FileResult | 'healthScore'): React.ReactNode => {
     if (sortField !== field) return null
-    return sortOrder === 'asc' ? <ChevronUp size={14} className="inline ml-1 text-gray-500" /> : <ChevronDown size={14} className="inline ml-1 text-gray-500" />
+    return sortOrder === 'asc' ? (
+      <ChevronUp size={14} className="inline ml-1 text-gray-500" />
+    ) : (
+      <ChevronDown size={14} className="inline ml-1 text-gray-500" />
+    )
   }
 
   return (
@@ -122,20 +153,33 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Status:</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-gray-700 font-medium cursor-pointer"
-          >
-            <option value="all">All States</option>
-            <option value="healthy">Healthy</option>
-            <option value="minor">Minor Corruption</option>
-            <option value="moderate">Moderate Corruption</option>
-            <option value="severe">Severe Corruption</option>
-            <option value="unrecoverable">Unrecoverable</option>
-          </select>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-gray-700 font-medium cursor-pointer"
+            >
+              <option value="all">All States</option>
+              <option value="healthy">Healthy</option>
+              <option value="minor">Minor Corruption</option>
+              <option value="moderate">Moderate Corruption</option>
+              <option value="severe">Severe Corruption</option>
+              <option value="unrecoverable">Unrecoverable</option>
+            </select>
+          </div>
+
+          {corruptedFilesCount > 0 && (
+            <button
+              onClick={handleDeleteAllCorrupted}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-semibold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-xs"
+              title="Delete all corrupted videos (minor, moderate, severe, and unrecoverable)"
+            >
+              <Trash2 size={14} />
+              Delete All Corrupted ({corruptedFilesCount})
+            </button>
+          )}
         </div>
       </div>
 
@@ -157,17 +201,29 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/30 text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
-                <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50" onClick={() => handleSort('fileName')}>
-                  File Name <SortIcon field="fileName" />
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  onClick={() => handleSort('fileName')}
+                >
+                  File Name {renderSortIcon('fileName')}
                 </th>
-                <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50" onClick={() => handleSort('fileSize')}>
-                  Size <SortIcon field="fileSize" />
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  onClick={() => handleSort('fileSize')}
+                >
+                  Size {renderSortIcon('fileSize')}
                 </th>
-                <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50" onClick={() => handleSort('healthScore')}>
-                  Health Score <SortIcon field="healthScore" />
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  onClick={() => handleSort('healthScore')}
+                >
+                  Health Score {renderSortIcon('healthScore')}
                 </th>
-                <th className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50" onClick={() => handleSort('corruptionLevel')}>
-                  Status <SortIcon field="corruptionLevel" />
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  onClick={() => handleSort('corruptionLevel')}
+                >
+                  Status {renderSortIcon('corruptionLevel')}
                 </th>
                 <th className="py-3.5 px-4">Error count</th>
                 <th className="py-3.5 px-4">Recommendation</th>
@@ -210,7 +266,10 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                       </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <Badge variant={getCorruptionColor(r.corruptionLevel)} className="capitalize font-semibold">
+                      <Badge
+                        variant={getCorruptionColor(r.corruptionLevel)}
+                        className="capitalize font-semibold"
+                      >
                         {r.corruptionLevel.replace('-', ' ')}
                       </Badge>
                     </td>
@@ -276,7 +335,9 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
       </div>
 
       <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 text-xs text-gray-400 flex items-center justify-between">
-        <span>Showing {filteredResults.length} of {results.length} files</span>
+        <span>
+          Showing {filteredResults.length} of {results.length} files
+        </span>
         <span>Click a row to open deep repair tools & metadata info.</span>
       </div>
     </div>

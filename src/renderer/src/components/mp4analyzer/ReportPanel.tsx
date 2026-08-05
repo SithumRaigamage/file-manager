@@ -12,7 +12,7 @@ interface ReportPanelProps {
 export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.Element {
   const [exporting, setExporting] = useState<string | null>(null)
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = async (): Promise<void> => {
     setExporting('csv')
     try {
       await window.api.mp4analyzer.exportCsv(results)
@@ -23,7 +23,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
     }
   }
 
-  const handleExportJson = async () => {
+  const handleExportJson = async (): Promise<void> => {
     setExporting('json')
     try {
       await window.api.mp4analyzer.exportJson(results)
@@ -34,7 +34,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
     }
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = (): void => {
     setExporting('pdf')
     try {
       const doc = new jsPDF()
@@ -42,12 +42,12 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       // Header block
       doc.setFillColor(30, 41, 59) // Dark Slate
       doc.rect(0, 0, 210, 40, 'F')
-      
+
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(20)
       doc.setFont('helvetica', 'bold')
       doc.text('FileFlow Diagnostics', 14, 18)
-      
+
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.text('MP4 Integrity & Playability Diagnostics Report', 14, 25)
@@ -63,12 +63,29 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       const summaryHeaders = [['Metric', 'Count', 'Percentage']]
       const summaryRows = [
         ['Total Scanned Files', summary.totalFiles.toString(), '100%'],
-        ['Healthy Videos', summary.healthyFiles.toString(), `${summary.totalFiles > 0 ? Math.round((summary.healthyFiles / summary.totalFiles) * 100) : 0}%`],
-        ['Corrupted Videos', summary.corruptedFiles.toString(), `${summary.totalFiles > 0 ? Math.round((summary.corruptedFiles / summary.totalFiles) * 100) : 0}%`],
-        ['Repairable Videos', summary.repairableFiles.toString(), `${summary.totalFiles > 0 ? Math.round((summary.repairableFiles / summary.totalFiles) * 100) : 0}%`],
-        ['Unrecoverable Videos', summary.unrecoverableFiles.toString(), `${summary.totalFiles > 0 ? Math.round((summary.unrecoverableFiles / summary.totalFiles) * 100) : 0}%`]
+        [
+          'Healthy Videos',
+          summary.healthyFiles.toString(),
+          `${summary.totalFiles > 0 ? Math.round((summary.healthyFiles / summary.totalFiles) * 100) : 0}%`
+        ],
+        [
+          'Corrupted Videos',
+          summary.corruptedFiles.toString(),
+          `${summary.totalFiles > 0 ? Math.round((summary.corruptedFiles / summary.totalFiles) * 100) : 0}%`
+        ],
+        [
+          'Repairable Videos',
+          summary.repairableFiles.toString(),
+          `${summary.totalFiles > 0 ? Math.round((summary.repairableFiles / summary.totalFiles) * 100) : 0}%`
+        ],
+        [
+          'Unrecoverable Videos',
+          summary.unrecoverableFiles.toString(),
+          `${summary.totalFiles > 0 ? Math.round((summary.unrecoverableFiles / summary.totalFiles) * 100) : 0}%`
+        ]
       ]
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(doc as any).autoTable({
         startY: 60,
         head: summaryHeaders,
@@ -82,9 +99,12 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       doc.setTextColor(30, 41, 59)
       doc.setFontSize(14)
       doc.setFont('helvetica', 'bold')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       doc.text('Detailed Video Breakdown', 14, (doc as any).lastAutoTable.finalY + 15)
 
-      const fileHeaders = [['File Name', 'Size', 'Duration', 'State', 'Health %', 'Errors', 'Action Recommendation']]
+      const fileHeaders = [
+        ['File Name', 'Size', 'Duration', 'State', 'Health %', 'Errors', 'Action Recommendation']
+      ]
       const fileRows = results.map((r) => {
         const sizeMB = (r.fileSize / (1024 * 1024)).toFixed(2) + ' MB'
         const duration = r.metadata?.duration ? Math.round(r.metadata.duration) + 's' : 'N/A'
@@ -101,7 +121,9 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         ]
       })
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(doc as any).autoTable({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         startY: (doc as any).lastAutoTable.finalY + 22,
         head: fileHeaders,
         body: fileRows,
@@ -141,9 +163,8 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
     )
   }
 
-  const overallHealth = summary.totalFiles > 0
-    ? Math.round((summary.healthyFiles / summary.totalFiles) * 100)
-    : 100
+  const overallHealth =
+    summary.totalFiles > 0 ? Math.round((summary.healthyFiles / summary.totalFiles) * 100) : 100
 
   return (
     <div className="flex-1 overflow-auto space-y-6 pr-1">
@@ -169,8 +190,12 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
 
         {/* Big Health Score Badge */}
         <div className="flex flex-col items-center justify-center border-l border-gray-100 h-full py-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Library Health</span>
-          <span className={`text-4xl font-black mt-1 ${overallHealth >= 90 ? 'text-emerald-500' : overallHealth >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            Library Health
+          </span>
+          <span
+            className={`text-4xl font-black mt-1 ${overallHealth >= 90 ? 'text-emerald-500' : overallHealth >= 70 ? 'text-amber-500' : 'text-rose-500'}`}
+          >
             {overallHealth}%
           </span>
         </div>
@@ -228,7 +253,8 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <div>
             <h4 className="text-sm font-bold text-gray-800">Export PDF Document</h4>
             <p className="text-xs text-gray-400 mt-1 px-4 leading-relaxed">
-              Sleek printable document with summary tables, metadata grids, and detailed recommendations.
+              Sleek printable document with summary tables, metadata grids, and detailed
+              recommendations.
             </p>
           </div>
           <button

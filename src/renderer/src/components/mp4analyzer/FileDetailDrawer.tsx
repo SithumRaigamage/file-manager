@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Copy, Check, Info, AlertTriangle, ShieldCheck, Terminal, Layers, PlayCircle, Code2, Hammer, Loader2, Sparkles, FolderOpen, Trash2 } from 'lucide-react'
+import {
+  X,
+  Copy,
+  Check,
+  Info,
+  AlertTriangle,
+  ShieldCheck,
+  Terminal,
+  Layers,
+  PlayCircle,
+  Code2,
+  Hammer,
+  Loader2,
+  Sparkles,
+  FolderOpen,
+  Trash2
+} from 'lucide-react'
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
@@ -32,13 +48,21 @@ function formatDuration(secs: number): string {
   return `${mStr}:${sStr}`
 }
 
-export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailDrawerProps): React.JSX.Element {
+export function FileDetailDrawer({
+  file,
+  onClose,
+  onRepairSuccess
+}: FileDetailDrawerProps): React.JSX.Element {
   const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'diagnostics' | 'player' | 'structure' | 'logs'>('diagnostics')
-  
+  const [activeTab, setActiveTab] = useState<'diagnostics' | 'player' | 'structure' | 'logs'>(
+    'diagnostics'
+  )
+
   // Repair execution state
-  const [repairStatus, setRepairStatus] = useState<'idle' | 'repairing' | 'success' | 'error'>('idle')
+  const [repairStatus, setRepairStatus] = useState<'idle' | 'repairing' | 'success' | 'error'>(
+    'idle'
+  )
   const [repairProgress, setRepairProgress] = useState(0)
   const [repairError, setRepairError] = useState<string | null>(null)
   const [repairedPath, setRepairedPath] = useState<string | null>(null)
@@ -57,6 +81,7 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
   }, [repairStatus, file])
 
   // Reset repair states when file changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setRepairStatus('idle')
     setRepairProgress(0)
@@ -64,14 +89,15 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
     setRepairedPath(null)
     setActiveTab('diagnostics')
   }, [file])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string): void => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleRunRepair = async () => {
+  const handleRunRepair = async (): Promise<void> => {
     if (!file || !file.recommendation.command) return
     setRepairStatus('repairing')
     setRepairProgress(10)
@@ -105,22 +131,33 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
     }
   }
 
-  const getCorruptionColor = (level: CorruptionLevel) => {
+  const getCorruptionColor = (
+    level: CorruptionLevel
+  ): 'success' | 'warning' | 'destructive' | 'secondary' => {
     switch (level) {
-      case 'healthy': return 'success' as const
-      case 'minor': return 'warning' as const
-      case 'moderate': return 'warning' as const
-      case 'severe': return 'destructive' as const
-      case 'unrecoverable': return 'destructive' as const
-      default: return 'secondary' as const
+      case 'healthy':
+        return 'success' as const
+      case 'minor':
+        return 'warning' as const
+      case 'moderate':
+        return 'warning' as const
+      case 'severe':
+        return 'destructive' as const
+      case 'unrecoverable':
+        return 'destructive' as const
+      default:
+        return 'secondary' as const
     }
   }
 
-  const getConfidenceColor = (conf: 'high' | 'medium' | 'low') => {
+  const getConfidenceColor = (conf: 'high' | 'medium' | 'low'): string => {
     switch (conf) {
-      case 'high': return 'bg-emerald-50 text-emerald-700 border-emerald-250'
-      case 'medium': return 'bg-amber-50 text-amber-700 border-amber-250'
-      case 'low': return 'bg-rose-50 text-rose-700 border-rose-250'
+      case 'high':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-250'
+      case 'medium':
+        return 'bg-amber-50 text-amber-700 border-amber-250'
+      case 'low':
+        return 'bg-rose-50 text-rose-700 border-rose-250'
     }
   }
 
@@ -200,7 +237,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
               <button
                 onClick={() => setActiveTab('diagnostics')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'diagnostics' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent hover:text-gray-800'
+                  activeTab === 'diagnostics'
+                    ? 'border-blue-600 text-blue-600 font-bold'
+                    : 'border-transparent hover:text-gray-800'
                 }`}
               >
                 Diagnostics
@@ -208,7 +247,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
               <button
                 onClick={() => setActiveTab('player')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'player' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent hover:text-gray-800'
+                  activeTab === 'player'
+                    ? 'border-blue-600 text-blue-600 font-bold'
+                    : 'border-transparent hover:text-gray-800'
                 }`}
               >
                 Playback Test
@@ -216,7 +257,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
               <button
                 onClick={() => setActiveTab('structure')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'structure' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent hover:text-gray-800'
+                  activeTab === 'structure'
+                    ? 'border-blue-600 text-blue-600 font-bold'
+                    : 'border-transparent hover:text-gray-800'
                 }`}
               >
                 Atom Structure
@@ -224,7 +267,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
               <button
                 onClick={() => setActiveTab('logs')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'logs' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent hover:text-gray-800'
+                  activeTab === 'logs'
+                    ? 'border-blue-600 text-blue-600 font-bold'
+                    : 'border-transparent hover:text-gray-800'
                 }`}
               >
                 FFmpeg Frame Logs ({file.errorLogs?.length || 0})
@@ -233,20 +278,26 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
 
             {/* Content body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              
               {/* Tab 1: Diagnostics */}
               {activeTab === 'diagnostics' && (
                 <div className="space-y-6">
                   {/* Quick Status banner */}
                   <div className="flex items-center justify-between p-4 bg-gray-50/60 border border-gray-100 rounded-2xl">
                     <div>
-                      <span className="text-xs font-semibold text-gray-400 uppercase block">Status</span>
-                      <Badge variant={getCorruptionColor(file.corruptionLevel)} className="mt-1 capitalize">
+                      <span className="text-xs font-semibold text-gray-400 uppercase block">
+                        Status
+                      </span>
+                      <Badge
+                        variant={getCorruptionColor(file.corruptionLevel)}
+                        className="mt-1 capitalize"
+                      >
                         {file.corruptionLevel.replace('-', ' ')}
                       </Badge>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-semibold text-gray-400 uppercase block">Health Score</span>
+                      <span className="text-xs font-semibold text-gray-400 uppercase block">
+                        Health Score
+                      </span>
                       <span className="text-2xl font-black text-gray-800">
                         {file.playbackVerification?.healthScore ?? 100}%
                       </span>
@@ -258,8 +309,12 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                     <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 flex items-start gap-3">
                       <AlertTriangle size={18} className="shrink-0 stroke-[2] mt-0.5" />
                       <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-red-900">Diagnostics Error</h4>
-                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-850">{file.errorMsg}</p>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-red-900">
+                          Diagnostics Error
+                        </h4>
+                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-850">
+                          {file.errorMsg}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -271,37 +326,49 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">File size</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          File size
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5">
                           {formatBytes(file.fileSize)}
                         </span>
                       </div>
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Duration</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          Duration
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5">
                           {formatDuration(file.metadata?.duration || 0)}
                         </span>
                       </div>
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Resolution</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          Resolution
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5">
                           {file.metadata?.resolution || 'Unknown'}
                         </span>
                       </div>
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Frame rate</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          Frame rate
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5">
                           {file.metadata?.fps ? `${file.metadata.fps} FPS` : 'Unknown'}
                         </span>
                       </div>
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Video codec</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          Video codec
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5 uppercase">
                           {file.metadata?.codec || 'None'}
                         </span>
                       </div>
                       <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Audio codec</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          Audio codec
+                        </span>
                         <span className="block text-sm font-semibold text-gray-800 mt-0.5 uppercase">
                           {file.metadata?.audioCodec || 'None'}
                         </span>
@@ -317,21 +384,28 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                     <div className="p-4 bg-gray-50/30 border border-gray-100 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Total frames analyzed:</span>
-                        <span className="font-bold text-gray-800">{file.playbackVerification?.totalFrames ?? 0}</span>
+                        <span className="font-bold text-gray-800">
+                          {file.playbackVerification?.totalFrames ?? 0}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Decodable (playable) frames:</span>
-                        <span className="font-bold text-emerald-600">{file.playbackVerification?.decodableFrames ?? 0}</span>
+                        <span className="font-bold text-emerald-600">
+                          {file.playbackVerification?.decodableFrames ?? 0}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Corrupted frames:</span>
-                        <span className="font-bold text-rose-600">{file.playbackVerification?.corruptedFrames ?? 0}</span>
+                        <span className="font-bold text-rose-600">
+                          {file.playbackVerification?.corruptedFrames ?? 0}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Stream validation status:</span>
                         <span className="font-semibold text-gray-800">
-                          {file.ffmpegValidation.errorCount} Errors, {file.ffmpegValidation.warningCount} Warnings
-                    </span>
+                          {file.ffmpegValidation.errorCount} Errors,{' '}
+                          {file.ffmpegValidation.warningCount} Warnings
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -346,7 +420,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                         <div className="text-xs text-gray-600 font-medium leading-relaxed">
                           {file.recommendation.action}
                         </div>
-                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase whitespace-nowrap ${getConfidenceColor(file.recommendation.confidence)}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase whitespace-nowrap ${getConfidenceColor(file.recommendation.confidence)}`}
+                        >
                           {file.recommendation.confidence} Confidence
                         </span>
                       </div>
@@ -362,7 +438,11 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all cursor-pointer flex items-center justify-center"
                               title="Copy repair command"
                             >
-                              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                              {copied ? (
+                                <Check size={14} className="text-emerald-500" />
+                              ) : (
+                                <Copy size={14} />
+                              )}
                             </button>
                           </div>
 
@@ -399,7 +479,10 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                             {repairStatus === 'success' && (
                               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 text-center text-xs font-semibold text-emerald-800 space-y-1 flex flex-col items-center">
                                 <span className="flex items-center gap-1.5 text-emerald-900 font-bold text-sm">
-                                  <Sparkles size={16} className="text-emerald-500 fill-emerald-500" />
+                                  <Sparkles
+                                    size={16}
+                                    className="text-emerald-500 fill-emerald-500"
+                                  />
                                   Repair Completed Successfully!
                                 </span>
                                 <span className="text-[10px] font-medium text-emerald-600 block mt-1 break-all">
@@ -444,7 +527,8 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                       <ShieldCheck size={36} className="text-gray-400 mb-2 stroke-[1.5]" />
                       <h4 className="text-sm font-bold text-gray-700">Video Player Offline</h4>
                       <p className="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
-                        This video has severe atom structural damage and missing metadata blocks. It cannot be parsed by HTML5 decoders.
+                        This video has severe atom structural damage and missing metadata blocks. It
+                        cannot be parsed by HTML5 decoders.
                       </p>
                     </div>
                   ) : (
@@ -463,7 +547,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                           <PlayCircle size={14} /> Playback notice
                         </div>
                         <div>
-                          Chromium decodes H.264 streams and AAC audio wrappers natively. If the video uses advanced formats (HEVC, H.265), compatibility depends on your hardware acceleration status.
+                          Chromium decodes H.264 streams and AAC audio wrappers natively. If the
+                          video uses advanced formats (HEVC, H.265), compatibility depends on your
+                          hardware acceleration status.
                         </div>
                       </div>
                     </div>
@@ -491,7 +577,9 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                               className="flex items-center gap-1.5"
                             >
                               <span className="text-gray-300">└─</span>
-                              <span className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-650'}`}>
+                              <span
+                                className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-650'}`}
+                              >
                                 {name}
                               </span>
                             </div>
@@ -516,7 +604,10 @@ export function FileDetailDrawer({ file, onClose, onRepairSuccess }: FileDetailD
                   {file.errorLogs && file.errorLogs.length > 0 ? (
                     <div className="font-mono text-xs p-4 bg-gray-950 text-gray-300 rounded-xl space-y-2 max-h-[450px] overflow-y-auto border border-gray-900 scrollbar-thin">
                       {file.errorLogs.map((log, idx) => (
-                        <div key={idx} className={log.startsWith('Error:') ? 'text-red-400' : 'text-yellow-500'}>
+                        <div
+                          key={idx}
+                          className={log.startsWith('Error:') ? 'text-red-400' : 'text-yellow-500'}
+                        >
                           {log}
                         </div>
                       ))}

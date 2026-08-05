@@ -90,7 +90,7 @@ app.whenReady().then(() => {
     try {
       console.log('Media protocol requested URL:', request.url)
       const url = new URL(request.url)
-      
+
       let filePath = ''
       if (url.host) {
         filePath = url.host + url.pathname
@@ -100,17 +100,17 @@ app.whenReady().then(() => {
       } else {
         filePath = url.pathname
       }
-      
+
       filePath = decodeURIComponent(filePath)
       if (process.platform === 'win32' && filePath.startsWith('/')) {
         filePath = filePath.slice(1)
       }
-      
+
       // Map case-lowercased 'users' host segment back to 'Users' on macOS/Linux systems to prevent case issues
       if (process.platform !== 'win32' && filePath.startsWith('/users/')) {
         filePath = '/Users/' + filePath.slice(7)
       }
-      
+
       filePath = normalize(filePath)
       console.log('Resolved filesystem path:', filePath)
 
@@ -139,7 +139,7 @@ app.whenReady().then(() => {
           'Content-Type': mimeType
         })
 
-        return new Response(Readable.toWeb(fileStream) as any, {
+        return new Response(Readable.toWeb(fileStream) as unknown as BodyInit, {
           status: 206,
           statusText: 'Partial Content',
           headers: responseHeaders
@@ -151,7 +151,7 @@ app.whenReady().then(() => {
           'Content-Type': mimeType,
           'Accept-Ranges': 'bytes'
         })
-        return new Response(Readable.toWeb(fileStream) as any, {
+        return new Response(Readable.toWeb(fileStream) as unknown as BodyInit, {
           status: 200,
           headers: responseHeaders
         })
