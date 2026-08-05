@@ -1,12 +1,21 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck } from 'lucide-react'
+import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
 const navItems = [
   {
     to: '/',
+    icon: FolderOpen,
+    label: 'Dashboard',
+    description: 'System overview',
+    color: 'text-indigo-600',
+    activeBg: 'bg-indigo-50',
+    activeBar: 'bg-indigo-600'
+  },
+  {
+    to: '/organizer',
     icon: FolderOpen,
     label: 'Organizer',
     description: 'Sort files by type',
@@ -49,6 +58,24 @@ const navItems = [
     color: 'text-rose-600',
     activeBg: 'bg-rose-50',
     activeBar: 'bg-rose-600'
+  },
+  {
+    to: '/duplicates',
+    icon: Layers,
+    label: 'Duplicates',
+    description: 'Find identical files',
+    color: 'text-cyan-600',
+    activeBg: 'bg-cyan-50',
+    activeBar: 'bg-cyan-600'
+  },
+  {
+    to: '/history',
+    icon: History,
+    label: 'History',
+    description: 'Undo past operations',
+    color: 'text-slate-600',
+    activeBg: 'bg-slate-100',
+    activeBar: 'bg-slate-600'
   }
 ]
 

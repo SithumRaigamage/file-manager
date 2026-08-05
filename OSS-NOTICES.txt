@@ -1,0 +1,24 @@
+OPEN SOURCE SOFTWARE NOTICES
+
+FileFlow incorporates several Open Source Software (OSS) components. We are grateful to the open source community for their work. Below is a summary of key components and their licenses. 
+
+---
+
+1. FFmpeg
+FileFlow includes binaries for FFmpeg and FFprobe, which are distributed under the GNU Lesser General Public License (LGPL) version 2.1 (or later). 
+The source code for FFmpeg can be downloaded from: https://ffmpeg.org/download.html
+You are free to replace the bundled FFmpeg libraries with your own compiled versions as permitted under the LGPL. FileFlow dynamically invokes FFmpeg via the command-line interface.
+
+2. React & Ecosystem
+React, React DOM, and related libraries are licensed under the MIT License.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+3. Electron
+Electron is licensed under the MIT License.
+Copyright (c) Electron contributors.
+
+4. SQLite3
+SQLite is in the Public Domain.
+The better-sqlite3 bindings used in FileFlow are licensed under the MIT License.
+
+For a complete list of third-party Node modules and their licenses, please refer to the package-lock.json in the source code repository or run `npm list`.

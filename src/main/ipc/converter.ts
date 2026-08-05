@@ -1,29 +1,9 @@
 import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import { execFile, spawn } from 'child_process'
-import { promisify } from 'util'
+import { spawn } from 'child_process'
 
-const execFileAsync = promisify(execFile)
-
-async function findFFmpeg(): Promise<string> {
-  // Try common paths
-  const candidates = [
-    '/usr/local/bin/ffmpeg',
-    '/opt/homebrew/bin/ffmpeg',
-    '/usr/bin/ffmpeg',
-    'ffmpeg' // PATH fallback
-  ]
-  for (const candidate of candidates) {
-    try {
-      await execFileAsync(candidate, ['-version'])
-      return candidate
-    } catch {
-      // continue
-    }
-  }
-  throw new Error('ffmpeg not found. Please install it via: brew install ffmpeg')
-}
+import { resolveFFmpegPath } from '../features/converter/ffmpeg-locator'
 
 export interface ConvertJob {
   inputPath: string
@@ -86,7 +66,7 @@ function buildFFmpegArgs(job: ConvertJob, outputPath: string): string[] {
 export function registerConverterHandlers(): void {
   ipcMain.handle('converter:checkFFmpeg', async () => {
     try {
-      const ffmpegPath = await findFFmpeg()
+      const ffmpegPath = await resolveFFmpegPath()
       return { available: true, path: ffmpegPath }
     } catch (err) {
       return { available: false, error: (err as Error).message }
@@ -95,7 +75,7 @@ export function registerConverterHandlers(): void {
 
   ipcMain.handle('converter:convert', async (event, job: ConvertJob): Promise<ConvertResult> => {
     try {
-      const ffmpegPath = await findFFmpeg()
+      const ffmpegPath = await resolveFFmpegPath()
       const baseName = job.outputName ?? path.basename(job.inputPath, path.extname(job.inputPath))
       const outputPath = path.join(job.outputDir, `${baseName}.${job.outputFormat}`)
 
@@ -157,6 +137,43 @@ export function registerConverterHandlers(): void {
       })
     } catch (err) {
       return { success: false, error: (err as Error).message }
+    }
+  })
+
+  // NEW Domain IPC Handlers
+  let converterQueueInstance: any = null
+
+  ipcMain.handle('converter:enqueueConversion', async (event, paths: string[], preset: any) => {
+    try {
+      if (!converterQueueInstance) {
+        const { ConverterQueue } = await import('../domain/converter/converter-queue')
+        converterQueueInstance = new ConverterQueue()
+      }
+
+      const jobId = converterQueueInstance.enqueue(
+        paths,
+        preset,
+        (id: string, filePath: string, progress: number) => {
+          event.sender.send('converter:progress', { jobId: id, file: filePath, progress })
+        },
+        (batchId: string) => {
+          console.log(`[Converter] Batch ${batchId} complete.`)
+        }
+      )
+      return { ok: true, data: { jobId } }
+    } catch (err) {
+      return { ok: false, error: { code: 'ENQUEUE_ERROR', message: (err as Error).message } }
+    }
+  })
+
+  ipcMain.handle('converter:cancelConversion', async (_, jobId: string) => {
+    try {
+      if (converterQueueInstance) {
+        converterQueueInstance.cancelJob(jobId)
+      }
+      return { ok: true, data: undefined }
+    } catch (err) {
+      return { ok: false, error: { code: 'CANCEL_ERROR', message: (err as Error).message } }
     }
   })
 }

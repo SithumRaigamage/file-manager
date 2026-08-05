@@ -1,124 +1,59 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
-
-export interface OrganizerPreviewItem {
-  sourcePath: string
-  destinationPath: string
-  fileName: string
-  extension: string
-  category: string
-  size: number
-}
-
-export interface RenamePreviewItem {
-  sourcePath: string
-  oldName: string
-  newName: string
-  newPath: string
-  conflict: boolean
-}
-
-export interface ExtensionRule {
-  extensions: string[]
-  folderName: string
-  enabled: boolean
-}
-
-export interface OrganizerJob {
-  sourceDir: string
-  rules: ExtensionRule[]
-  createSubfolders: boolean
-  mode: 'move' | 'copy'
-}
-
-export interface RenamePattern {
-  type: 'sequential' | 'prefix' | 'suffix' | 'replace' | 'date'
-  prefix?: string
-  suffix?: string
-  separator?: string
-  startIndex?: number
-  find?: string
-  replaceWith?: string
-  dateFormat?: string
-  extension?: 'keep' | 'lowercase' | 'uppercase'
-}
-
-export interface ConvertJob {
-  inputPath: string
-  outputFormat: string
-  outputDir: string
-  outputName?: string
-  videoQuality?: 'high' | 'medium' | 'low'
-  audioQuality?: 'high' | 'medium' | 'low'
-}
-
-export interface AppAPI {
-  openDirectory: () => Promise<string | null>
-  openFiles: () => Promise<string[]>
-  openPath: (path: string) => Promise<void>
-  showItemInFolder: (path: string) => void
-  organizer: {
-    preview: (job: OrganizerJob) => Promise<OrganizerPreviewItem[]>
-    execute: (
-      job: OrganizerJob
-    ) => Promise<{ success: boolean; processed: number; skipped: number; errors: string[] }>
-    scan: (dirPath: string) => Promise<{ totalFiles: number; byExtension: Record<string, number> }>
-    onProgress: (
-      cb: (data: { processed: number; total: number; fileName: string }) => void
-    ) => () => void
-  }
-  renamer: {
-    preview: (filePaths: string[], pattern: RenamePattern) => Promise<RenamePreviewItem[]>
-    execute: (
-      items: RenamePreviewItem[]
-    ) => Promise<{ success: boolean; renamed: number; errors: string[] }>
-    undo: (items: RenamePreviewItem[]) => Promise<{ success: boolean; errors: string[] }>
-    listFiles: (
-      dirPath: string
-    ) => Promise<Array<{ name: string; path: string; ext: string; size: number; mtime: string }>>
-  }
-  converter: {
-    checkFFmpeg: () => Promise<{ available: boolean; path?: string; error?: string }>
-    convert: (job: ConvertJob) => Promise<{ success: boolean; outputPath?: string; error?: string }>
-    onProgress: (cb: (data: { progress: number; inputPath: string }) => void) => () => void
-  }
-  mp4analyzer: {
-    analyzeFile: (
-      filePath: string
-    ) => Promise<import('../renderer/src/types/mp4analyzer').Mp4FileResult>
-    analyzeFolder: (
-      folderPath: string
-    ) => Promise<import('../renderer/src/types/mp4analyzer').Mp4FileResult[]>
-    cancel: () => Promise<boolean>
-    exportCsv: (
-      results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]
-    ) => Promise<boolean>
-    exportJson: (
-      results: import('../renderer/src/types/mp4analyzer').Mp4FileResult[]
-    ) => Promise<boolean>
-    runRepair: (
-      filePath: string,
-      command: string
-    ) => Promise<{ success: boolean; repairedPath: string; error?: string }>
-    deleteFile: (filePath: string) => Promise<{
-      success: boolean
-      action: 'none' | 'file' | 'folder'
-      filePath: string
-      folderPath: string
-    }>
-    deleteMultipleFiles: (
-      filePaths: string[],
-      scannedFolder: string | null
-    ) => Promise<{ success: boolean; deletedFiles: string[]; deletedFolders: string[] }>
-    onProgress: (
-      cb: (data: import('../renderer/src/types/mp4analyzer').Mp4ScanProgress) => void
-    ) => () => void
-    onRepairProgress: (cb: (data: { filePath: string; progress: number }) => void) => () => void
-  }
-}
+import {
+  OrganizePreviewItem,
+  OrganizeResult,
+  SmartRuleDefinition,
+  RuleSet,
+  RenamePreviewItem,
+  RenameResult,
+  RenamePattern,
+  ConversionPreset,
+  ConversionProgressEvent,
+  BatchRecord,
+  HistoryFilter,
+  IpcResponse,
+} from './index';
 
 declare global {
   interface Window {
-    electron: ElectronAPI
-    api: AppAPI
+    fileflow: {
+      organizer: {
+        listFolder(path: string): Promise<IpcResponse<any[]>>;
+        previewQuickRule(path: string, ruleId: string): Promise<IpcResponse<OrganizePreviewItem[]>>;
+        previewSmartRule(path: string, rule: SmartRuleDefinition): Promise<IpcResponse<OrganizePreviewItem[]>>;
+        applyOrganize(items: OrganizePreviewItem[]): Promise<IpcResponse<OrganizeResult>>;
+        watchFolder(path: string, ruleSet: RuleSet): Promise<IpcResponse<{ watcherId: string }>>;
+        unwatchFolder(watcherId: string): Promise<IpcResponse<void>>;
+      };
+      renamer: {
+        previewRename(paths: string[], pattern: RenamePattern): Promise<IpcResponse<RenamePreviewItem[]>>;
+        applyRename(items: RenamePreviewItem[]): Promise<IpcResponse<RenameResult>>;
+        undoRename(batchId: string): Promise<IpcResponse<void>>;
+      };
+      converter: {
+        enqueueConversion(paths: string[], preset: ConversionPreset): Promise<IpcResponse<{ jobId: string }>>;
+        cancelConversion(jobId: string): Promise<IpcResponse<void>>;
+        onProgress(callback: (event: ConversionProgressEvent) => void): () => void;
+      };
+      history: {
+        listBatches(filter?: HistoryFilter): Promise<IpcResponse<BatchRecord[]>>;
+        revertBatch(batchId: string): Promise<IpcResponse<void>>;
+      };
+      settings: {
+        get(): Promise<IpcResponse<any>>;
+        update(updates: any): Promise<IpcResponse<void>>;
+      };
+      duplicates: {
+        scan(dirPath: string): Promise<IpcResponse<void>>;
+        cancel(): Promise<IpcResponse<void>>;
+        getGroups(): Promise<IpcResponse<any[]>>;
+        resolve(groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<void>>;
+        onProgress(callback: (data: any) => void): () => void;
+      };
+      dashboard: {
+        getStats(): Promise<IpcResponse<any>>;
+      };
+    };
+    api: any;
+    electron: any;
   }
 }
