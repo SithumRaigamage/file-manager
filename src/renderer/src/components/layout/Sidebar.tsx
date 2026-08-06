@@ -110,22 +110,22 @@ export function Sidebar(): React.ReactElement {
   const location = useLocation()
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col bg-gray-50 border-r border-gray-100 h-full">
+    <aside className="w-56 shrink-0 flex flex-col bg-white/20 backdrop-blur-md border-r border-white/30 h-full shadow-[2px_0_8px_rgba(0,0,0,0.02)] z-10 relative">
       {/* App Header */}
       <div className="drag-region px-5 pt-10 pb-5">
-        <div className="no-drag flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm font-bold">FM</span>
+        <div className="no-drag-region flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500/80 to-violet-600/80 backdrop-blur flex items-center justify-center shadow-glass border border-white/20">
+            <span className="text-white text-sm font-bold shadow-sm">FM</span>
           </div>
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-tight">FileFlow</h1>
-            <p className="text-xs text-gray-400 leading-tight">File Manager</p>
+            <p className="text-xs text-gray-500 leading-tight font-medium">File Manager</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-1">
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto no-drag-region">
         {navItems.map((item) => {
           const isActive =
             item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
@@ -135,8 +135,8 @@ export function Sidebar(): React.ReactElement {
               key={item.to}
               to={item.to}
               className={cn(
-                'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group cursor-pointer',
-                isActive ? `${item.activeBg}` : 'hover:bg-white hover:shadow-sm'
+                'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group cursor-pointer',
+                isActive ? `${item.activeBg} shadow-sm border border-white/50 backdrop-blur-sm` : 'hover:bg-white/40 hover:shadow-sm hover:border hover:border-white/30 border border-transparent'
               )}
             >
               {isActive && (
@@ -151,19 +151,19 @@ export function Sidebar(): React.ReactElement {
                 size={18}
                 className={cn(
                   'shrink-0 transition-colors',
-                  isActive ? item.color : 'text-gray-400 group-hover:text-gray-600'
+                  isActive ? item.color : 'text-gray-500 group-hover:text-gray-700'
                 )}
               />
               <div className="min-w-0">
                 <p
                   className={cn(
-                    'text-sm font-medium leading-tight',
-                    isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-800'
+                    'text-sm font-semibold leading-tight',
+                    isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'
                   )}
                 >
                   {item.label}
                 </p>
-                <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                <p className="text-[11px] text-gray-500 truncate mt-0.5">{item.description}</p>
               </div>
             </NavLink>
           )
@@ -171,12 +171,12 @@ export function Sidebar(): React.ReactElement {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-400 hover:bg-white hover:text-gray-600 cursor-pointer transition-all hover:shadow-sm">
+      <div className="p-3 border-t border-white/30 no-drag-region">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-500 hover:bg-white/40 hover:text-gray-700 cursor-pointer transition-all hover:shadow-sm hover:border hover:border-white/30 border border-transparent">
           <Settings size={16} />
-          <span className="text-xs font-medium">Settings</span>
+          <span className="text-xs font-semibold">Settings</span>
         </div>
-        <p className="text-xs text-gray-300 text-center mt-2">v1.0.0</p>
+        <p className="text-xs text-gray-400/80 text-center mt-2 font-medium">v1.0.0</p>
       </div>
     </aside>
   )

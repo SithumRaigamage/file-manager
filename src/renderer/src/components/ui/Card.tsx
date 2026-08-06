@@ -5,9 +5,12 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('rounded-xl border border-gray-100 bg-white shadow-sm', className)}
+      className={cn('rounded-xl border border-white/40 bg-white/40 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden', className)}
       {...props}
-    />
+    >
+      <div className="absolute inset-0 bg-noise opacity-50 mix-blend-overlay pointer-events-none" />
+      <div className="relative z-10 h-full flex flex-col">{props.children}</div>
+    </div>
   )
 )
 Card.displayName = 'Card'

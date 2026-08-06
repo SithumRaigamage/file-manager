@@ -19,9 +19,16 @@ import './assets/main.css'
 export default function App(): React.JSX.Element {
   return (
     <HashRouter>
-      <div className="flex h-screen bg-white overflow-hidden">
+      <div className="flex h-screen overflow-hidden bg-transparent text-gray-900 relative">
+        {/* Soft Aurora Mesh Background */}
+        <div className="absolute inset-0 pointer-events-none -z-10 bg-[#f8fafc]">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-300/30 blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-violet-300/30 blur-[100px]" />
+          <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] rounded-full bg-blue-300/20 blur-[80px]" />
+        </div>
+        
         <Sidebar />
-        <main className="flex-1 overflow-hidden flex flex-col">
+        <main className="flex-1 overflow-hidden flex flex-col z-0">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/organizer" element={<OrganizerPage />} />

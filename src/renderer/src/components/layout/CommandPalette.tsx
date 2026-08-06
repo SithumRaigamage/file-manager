@@ -115,7 +115,7 @@ export function CommandPalette() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-gray-900/40 backdrop-blur-md"
             onClick={() => setIsOpen(false)}
           />
 
@@ -125,10 +125,11 @@ export function CommandPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-gray-200"
+            className="relative w-full max-w-2xl bg-white/60 backdrop-blur-2xl rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col border border-white/50"
           >
-            <div className="flex items-center px-4 py-3 border-b">
-              <Search className="w-5 h-5 text-gray-400 mr-3" />
+            <div className="absolute inset-0 bg-noise opacity-50 mix-blend-overlay pointer-events-none" />
+            <div className="relative z-10 flex items-center px-4 py-3 border-b border-white/40">
+              <Search className="w-5 h-5 text-gray-500 mr-3" />
               <input
                 ref={inputRef}
                 type="text"
