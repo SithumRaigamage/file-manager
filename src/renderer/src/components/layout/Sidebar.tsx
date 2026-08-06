@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive } from 'lucide-react'
+import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive, Zap } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
@@ -13,6 +13,15 @@ const navItems = [
     color: 'text-indigo-600',
     activeBg: 'bg-indigo-50',
     activeBar: 'bg-indigo-600'
+  },
+  {
+    to: '/automation',
+    icon: Zap,
+    label: 'Automation',
+    description: 'Visual workflows',
+    color: 'text-yellow-600',
+    activeBg: 'bg-yellow-50',
+    activeBar: 'bg-yellow-500'
   },
   {
     to: '/organizer',

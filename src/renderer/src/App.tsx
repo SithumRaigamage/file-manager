@@ -10,6 +10,7 @@ import { DashboardPage } from './components/pages/DashboardPage'
 import { DuplicatesPage } from './components/pages/DuplicatesPage'
 import { AdvancedSearchPage } from './components/pages/AdvancedSearchPage'
 import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
+import { AutomationPage } from './components/pages/AutomationPage'
 import './assets/main.css'
 
 export default function App(): React.JSX.Element {
@@ -21,6 +22,7 @@ export default function App(): React.JSX.Element {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/organizer" element={<OrganizerPage />} />
+            <Route path="/automation" element={<AutomationPage />} />
             <Route path="/renamer" element={<RenamerPage />} />
             <Route path="/converter" element={<ConverterPage />} />
             <Route path="/searcher" element={<AdvancedSearchPage />} />
