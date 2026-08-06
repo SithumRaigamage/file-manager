@@ -15,6 +15,8 @@ import { registerDuplicatesHandlers } from './ipc/duplicates'
 import { registerDashboardHandlers } from './ipc/dashboard'
 import { registerIndexerHandlers } from './ipc/indexer'
 import { registerAnalyticsHandlers } from './ipc/analytics'
+import { registerAutomationHandlers } from './ipc/automation'
+import { schedulerService } from './features/automation/scheduler-service'
 import { db } from './db'
 import { appSettings } from './db/schema'
 import { eq } from 'drizzle-orm'
@@ -200,6 +202,10 @@ app.whenReady().then(() => {
   registerDashboardHandlers()
   registerIndexerHandlers()
   registerAnalyticsHandlers()
+  registerAutomationHandlers()
+
+  // Start scheduler
+  schedulerService.start()
 
   // Dialog handlers
   ipcMain.handle('dialog:openDirectory', async () => {

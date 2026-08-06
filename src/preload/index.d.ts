@@ -62,6 +62,11 @@ declare global {
         getLargestFiles(limit: number): Promise<IpcResponse<any[]>>;
         getStorageAnalytics(): Promise<IpcResponse<any>>;
       };
+      automation: {
+        listWorkflows(): Promise<IpcResponse<any[]>>;
+        createWorkflow(workflowData: any): Promise<IpcResponse<{ id: string }>>;
+        triggerWorkflow(workflowId: string): Promise<IpcResponse<void>>;
+      };
     };
     api: any;
     electron: any;

@@ -94,6 +94,27 @@ sqlite.exec(`
     INSERT INTO search_index_fts(search_index_fts, rowid, filename, path) VALUES('delete', old.rowid, old.filename, old.path);
     INSERT INTO search_index_fts(rowid, filename, path) VALUES (new.rowid, new.filename, new.path);
   END;
+
+  CREATE TABLE IF NOT EXISTS workflows (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    trigger TEXT NOT NULL,
+    trigger_config TEXT,
+    steps TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS scheduled_jobs (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    cron_expression TEXT NOT NULL,
+    next_run_at INTEGER NOT NULL,
+    last_run_at INTEGER,
+    status TEXT NOT NULL DEFAULT 'idle',
+    created_at TEXT NOT NULL
+  );
 `);
 
 // Lightweight migration for new columns

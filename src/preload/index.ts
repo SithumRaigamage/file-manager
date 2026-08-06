@@ -215,6 +215,11 @@ const fileflowApi = {
   analytics: {
     getLargestFiles: (limit: number): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:analytics:getLargestFiles', limit),
     getStorageAnalytics: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:analytics:getStorageAnalytics'),
+  },
+  automation: {
+    listWorkflows: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:automation:listWorkflows'),
+    createWorkflow: (workflowData: any): Promise<IpcResponse<{ id: string }>> => ipcRenderer.invoke('fileflow:automation:createWorkflow', workflowData),
+    triggerWorkflow: (workflowId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:automation:triggerWorkflow', workflowId),
   }
 };
 

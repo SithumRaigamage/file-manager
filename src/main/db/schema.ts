@@ -63,3 +63,24 @@ export const searchIndex = sqliteTable('search_index', {
   isDirectory: integer('is_directory', { mode: 'boolean' }).notNull().default(false),
   metadata: blob('metadata', { mode: 'json' }), // JSON blob for any extra info
 });
+
+export const workflows = sqliteTable('workflows', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  trigger: text('trigger', { enum: ['manual', 'schedule', 'watch'] }).notNull(),
+  triggerConfig: blob('trigger_config', { mode: 'json' }), // e.g. cron expression, watched folder path
+  steps: blob('steps', { mode: 'json' }).notNull(), // Array of actions (organize, rename, convert, etc.)
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull(),
+});
+
+export const scheduledJobs = sqliteTable('scheduled_jobs', {
+  id: text('id').primaryKey(),
+  workflowId: text('workflow_id').notNull(),
+  cronExpression: text('cron_expression').notNull(),
+  nextRunAt: integer('next_run_at').notNull(), // timestamp ms
+  lastRunAt: integer('last_run_at'), // timestamp ms
+  status: text('status', { enum: ['idle', 'running', 'failed'] }).notNull().default('idle'),
+  createdAt: text('created_at').notNull(),
+});
