@@ -64,9 +64,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         // Revert on failure
         set({ settings: previousSettings, error: res.error?.message || 'Failed to update setting' });
       }
-    } catch (err: unknown) {
+    } catch (err) {
       // Revert on failure
-      set({ settings: previousSettings, error: err.message || 'Failed to update setting' });
+      set({ settings: previousSettings, error: (err as Error).message || 'Failed to update setting' });
     }
   }
 }));
