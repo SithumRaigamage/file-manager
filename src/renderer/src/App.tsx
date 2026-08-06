@@ -4,11 +4,12 @@ import { Sidebar } from './components/layout/Sidebar'
 import { OrganizerPage } from './components/pages/OrganizerPage'
 import { RenamerPage } from './components/pages/RenamerPage'
 import { ConverterPage } from './components/pages/ConverterPage'
-import { SearcherPage } from './components/pages/SearcherPage'
 import { Mp4AnalyzerPage } from './components/pages/Mp4AnalyzerPage'
 import { HistoryPage } from './components/pages/HistoryPage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { DuplicatesPage } from './components/pages/DuplicatesPage'
+import { AdvancedSearchPage } from './components/pages/AdvancedSearchPage'
+import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
 import './assets/main.css'
 
 export default function App(): React.JSX.Element {
@@ -22,7 +23,8 @@ export default function App(): React.JSX.Element {
             <Route path="/organizer" element={<OrganizerPage />} />
             <Route path="/renamer" element={<RenamerPage />} />
             <Route path="/converter" element={<ConverterPage />} />
-            <Route path="/searcher" element={<SearcherPage />} />
+            <Route path="/searcher" element={<AdvancedSearchPage />} />
+            <Route path="/analytics" element={<LargeFileAnalyzerPage />} />
             <Route path="/mp4-analyzer" element={<Mp4AnalyzerPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/duplicates" element={<DuplicatesPage />} />

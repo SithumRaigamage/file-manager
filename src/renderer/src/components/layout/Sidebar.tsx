@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers } from 'lucide-react'
+import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
@@ -44,11 +44,20 @@ const navItems = [
   {
     to: '/searcher',
     icon: Search,
-    label: 'Searcher',
-    description: 'Search & collect files',
+    label: 'Advanced Search',
+    description: 'Instant file search',
     color: 'text-amber-600',
     activeBg: 'bg-amber-50',
     activeBar: 'bg-amber-500'
+  },
+  {
+    to: '/analytics',
+    icon: HardDrive,
+    label: 'Storage Analytics',
+    description: 'Visualize usage',
+    color: 'text-teal-600',
+    activeBg: 'bg-teal-50',
+    activeBar: 'bg-teal-600'
   },
   {
     to: '/mp4-analyzer',

@@ -9,6 +9,7 @@ const userDataPath = app ? app.getPath('userData') : process.cwd();
 const dbPath = path.join(userDataPath, 'fileflow.db');
 
 const sqlite = new Database(dbPath);
+sqlite.pragma('journal_mode = WAL');
 
 // Initialize tables if they don't exist
 sqlite.exec(`
@@ -66,6 +67,33 @@ sqlite.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_batch_records_timestamp ON batch_records(timestamp);
+
+  CREATE TABLE IF NOT EXISTS search_index (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    filename TEXT NOT NULL,
+    extension TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    last_modified INTEGER NOT NULL,
+    is_directory INTEGER NOT NULL DEFAULT 0,
+    metadata TEXT
+  );
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS search_index_fts USING fts5(
+    filename, path, content='search_index', content_rowid='rowid'
+  );
+
+  -- Triggers to keep FTS index up to date
+  CREATE TRIGGER IF NOT EXISTS search_index_ai AFTER INSERT ON search_index BEGIN
+    INSERT INTO search_index_fts(rowid, filename, path) VALUES (new.rowid, new.filename, new.path);
+  END;
+  CREATE TRIGGER IF NOT EXISTS search_index_ad AFTER DELETE ON search_index BEGIN
+    INSERT INTO search_index_fts(search_index_fts, rowid, filename, path) VALUES('delete', old.rowid, old.filename, old.path);
+  END;
+  CREATE TRIGGER IF NOT EXISTS search_index_au AFTER UPDATE ON search_index BEGIN
+    INSERT INTO search_index_fts(search_index_fts, rowid, filename, path) VALUES('delete', old.rowid, old.filename, old.path);
+    INSERT INTO search_index_fts(rowid, filename, path) VALUES (new.rowid, new.filename, new.path);
+  END;
 `);
 
 // Lightweight migration for new columns

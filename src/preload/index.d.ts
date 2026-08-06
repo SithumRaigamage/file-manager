@@ -52,6 +52,16 @@ declare global {
       dashboard: {
         getStats(): Promise<IpcResponse<any>>;
       };
+      indexer: {
+        start(dirPath: string): Promise<IpcResponse<void>>;
+        cancel(): Promise<IpcResponse<void>>;
+        search(query: any): Promise<IpcResponse<any[]>>;
+        onProgress(callback: (data: any) => void): () => void;
+      };
+      analytics: {
+        getLargestFiles(limit: number): Promise<IpcResponse<any[]>>;
+        getStorageAnalytics(): Promise<IpcResponse<any>>;
+      };
     };
     api: any;
     electron: any;

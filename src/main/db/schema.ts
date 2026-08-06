@@ -52,3 +52,14 @@ export const appSettings = sqliteTable('app_settings', {
   crashReportingOptIn: integer('crash_reporting_opt_in', { mode: 'boolean' }).notNull().default(false),
   historyRetentionDays: integer('history_retention_days').notNull().default(90),
 });
+
+export const searchIndex = sqliteTable('search_index', {
+  id: text('id').primaryKey(),
+  path: text('path').notNull().unique(),
+  filename: text('filename').notNull(),
+  extension: text('extension').notNull(),
+  size: integer('size').notNull(),
+  lastModified: integer('last_modified').notNull(),
+  isDirectory: integer('is_directory', { mode: 'boolean' }).notNull().default(false),
+  metadata: blob('metadata', { mode: 'json' }), // JSON blob for any extra info
+});

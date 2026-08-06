@@ -13,6 +13,8 @@ import { registerHistoryHandlers } from './ipc/history'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerDuplicatesHandlers } from './ipc/duplicates'
 import { registerDashboardHandlers } from './ipc/dashboard'
+import { registerIndexerHandlers } from './ipc/indexer'
+import { registerAnalyticsHandlers } from './ipc/analytics'
 import { db } from './db'
 import { appSettings } from './db/schema'
 import { eq } from 'drizzle-orm'
@@ -196,6 +198,8 @@ app.whenReady().then(() => {
   registerSettingsIpc()
   registerDuplicatesHandlers()
   registerDashboardHandlers()
+  registerIndexerHandlers()
+  registerAnalyticsHandlers()
 
   // Dialog handlers
   ipcMain.handle('dialog:openDirectory', async () => {

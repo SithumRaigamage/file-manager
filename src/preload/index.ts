@@ -201,6 +201,20 @@ const fileflowApi = {
   },
   dashboard: {
     getStats: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:dashboard:getStats'),
+  },
+  indexer: {
+    start: (dirPath: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:indexer:start', dirPath),
+    cancel: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:indexer:cancel'),
+    search: (query: any): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:indexer:search', query),
+    onProgress: (callback: (data: any) => void) => {
+      const handler = (_event: IpcRendererEvent, data: any) => callback(data);
+      ipcRenderer.on('fileflow:indexer:progress', handler);
+      return () => ipcRenderer.removeListener('fileflow:indexer:progress', handler);
+    }
+  },
+  analytics: {
+    getLargestFiles: (limit: number): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:analytics:getLargestFiles', limit),
+    getStorageAnalytics: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:analytics:getStorageAnalytics'),
   }
 };
 

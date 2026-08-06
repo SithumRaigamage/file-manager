@@ -9,7 +9,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
-          'hash-worker': resolve(__dirname, 'src/main/features/duplicates/hash-worker.ts')
+          'hash-worker': resolve(__dirname, 'src/main/features/duplicates/hash-worker.ts'),
+          'indexer-worker': resolve(__dirname, 'src/main/features/search/indexer-worker.ts')
         }
       }
     }
