@@ -75,6 +75,10 @@ declare global {
         removeFromFile(filePath: string, tagId: string): Promise<IpcResponse<void>>;
         getTagsForFile(filePath: string): Promise<IpcResponse<any[]>>;
       };
+      ai: {
+        checkStatus(): Promise<IpcResponse<{ isAvailable: boolean; message?: string }>>;
+        suggestCategories(folderPath: string, categories: string[]): Promise<IpcResponse<any[]>>;
+      };
     };
     api: any;
     electron: any;

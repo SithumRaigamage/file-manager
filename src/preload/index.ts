@@ -228,6 +228,10 @@ const fileflowApi = {
     assignToFile: (filePath: string, tagId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:tags:assignToFile', filePath, tagId),
     removeFromFile: (filePath: string, tagId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:tags:removeFromFile', filePath, tagId),
     getTagsForFile: (filePath: string): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:tags:getTagsForFile', filePath),
+  },
+  ai: {
+    checkStatus: (): Promise<IpcResponse<{ isAvailable: boolean; message?: string }>> => ipcRenderer.invoke('fileflow:ai:checkStatus'),
+    suggestCategories: (folderPath: string, categories: string[]): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:ai:suggestCategories', folderPath, categories),
   }
 };
 

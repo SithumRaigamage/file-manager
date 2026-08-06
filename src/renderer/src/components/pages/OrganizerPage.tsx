@@ -110,6 +110,58 @@ export function OrganizerPage(): React.JSX.Element {
 
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2">✨ AI Features</CardTitle>
+              <CardDescription>Intelligent categorization</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 text-indigo-600" 
+                onClick={async () => {
+                  if (!currentFolder) return;
+                  const categories = ['Invoices', 'Resumes', 'Receipts', 'Screenshots', 'Projects', 'Personal', 'Other'];
+                  // Set loading state (reusing main isLoading for simplicity)
+                  useOrganizerStore.setState({ isLoading: true, error: null });
+                  
+                  const statusRes = await window.fileflow.ai.checkStatus();
+                  if (!statusRes.ok) {
+                    useOrganizerStore.setState({ 
+                      isLoading: false, 
+                      error: statusRes.error.message 
+                    });
+                    return;
+                  }
+
+                  if (!statusRes.data.isAvailable) {
+                    useOrganizerStore.setState({ 
+                      isLoading: false, 
+                      error: statusRes.data.message || 'Ollama is not running locally.' 
+                    });
+                    return;
+                  }
+
+                  const res = await window.fileflow.ai.suggestCategories(currentFolder, categories);
+                  if (res.ok) {
+                    const aiPreviewItems = res.data.map((s: any) => ({
+                      originalPath: s.path,
+                      proposedDestination: `${currentFolder}/${s.suggestedCategory}/${s.file}`,
+                      action: 'move' as const
+                    }));
+                    useOrganizerStore.getState().setPreviewItems(aiPreviewItems);
+                  } else {
+                    useOrganizerStore.setState({ error: res.error.message });
+                  }
+                  useOrganizerStore.setState({ isLoading: false });
+                }}
+                disabled={!currentFolder || isLoading}
+              >
+                Auto-Categorize Folder
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Auto-Pilot</CardTitle>
               <CardDescription>Watch folder in background</CardDescription>
             </CardHeader>

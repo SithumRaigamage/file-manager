@@ -19,6 +19,7 @@ interface OrganizerState {
   previewQuickRule: (ruleId: string) => Promise<void>
   applyOrganize: () => Promise<void>
   toggleWatch: (ruleSet: any) => Promise<void>
+  setPreviewItems: (items: OrganizePreviewItem[]) => void
 }
 
 export const useOrganizerStore = create<OrganizerState>((set, get) => ({
@@ -110,5 +111,9 @@ export const useOrganizerStore = create<OrganizerState>((set, get) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  setPreviewItems: (items) => {
+    set({ previewItems: items });
   }
 }))
