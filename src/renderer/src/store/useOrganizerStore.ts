@@ -116,5 +116,15 @@ export const useOrganizerStore = create<OrganizerState>((set, get) => ({
 
   setPreviewItems: (items) => {
     set({ previewItems: items });
+  },
+
+  reset: () => {
+    set({
+      currentFolder: null,
+      files: [],
+      previewItems: [],
+      isLoading: false,
+      error: null
+    })
   }
 }))
