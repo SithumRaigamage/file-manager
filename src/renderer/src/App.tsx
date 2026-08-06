@@ -11,6 +11,7 @@ import { DuplicatesPage } from './components/pages/DuplicatesPage'
 import { AdvancedSearchPage } from './components/pages/AdvancedSearchPage'
 import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
 import { AutomationPage } from './components/pages/AutomationPage'
+import { CommandPalette } from './components/layout/CommandPalette'
 import './assets/main.css'
 
 export default function App(): React.JSX.Element {
@@ -33,6 +34,7 @@ export default function App(): React.JSX.Element {
           </Routes>
         </main>
       </div>
+      <CommandPalette />
     </HashRouter>
   )
 }

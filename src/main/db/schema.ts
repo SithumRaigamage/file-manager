@@ -84,3 +84,17 @@ export const scheduledJobs = sqliteTable('scheduled_jobs', {
   status: text('status', { enum: ['idle', 'running', 'failed'] }).notNull().default('idle'),
   createdAt: text('created_at').notNull(),
 });
+
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  color: text('color').notNull().default('#6366f1'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const fileTags = sqliteTable('file_tags', {
+  id: text('id').primaryKey(),
+  fileId: text('file_id').notNull(), // Corresponds to search_index path/id or a hash, assuming path for now to match indexer
+  tagId: text('tag_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});

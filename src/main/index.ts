@@ -16,6 +16,7 @@ import { registerDashboardHandlers } from './ipc/dashboard'
 import { registerIndexerHandlers } from './ipc/indexer'
 import { registerAnalyticsHandlers } from './ipc/analytics'
 import { registerAutomationHandlers } from './ipc/automation'
+import { registerTagsHandlers } from './ipc/tags'
 import { schedulerService } from './features/automation/scheduler-service'
 import { db } from './db'
 import { appSettings } from './db/schema'
@@ -203,6 +204,7 @@ app.whenReady().then(() => {
   registerIndexerHandlers()
   registerAnalyticsHandlers()
   registerAutomationHandlers()
+  registerTagsHandlers()
 
   // Start scheduler
   schedulerService.start()

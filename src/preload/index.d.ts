@@ -67,6 +67,14 @@ declare global {
         createWorkflow(workflowData: any): Promise<IpcResponse<{ id: string }>>;
         triggerWorkflow(workflowId: string): Promise<IpcResponse<void>>;
       };
+      tags: {
+        getAll(): Promise<IpcResponse<any[]>>;
+        create(data: { name: string, color?: string }): Promise<IpcResponse<any>>;
+        delete(id: string): Promise<IpcResponse<void>>;
+        assignToFile(filePath: string, tagId: string): Promise<IpcResponse<void>>;
+        removeFromFile(filePath: string, tagId: string): Promise<IpcResponse<void>>;
+        getTagsForFile(filePath: string): Promise<IpcResponse<any[]>>;
+      };
     };
     api: any;
     electron: any;

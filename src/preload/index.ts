@@ -220,6 +220,14 @@ const fileflowApi = {
     listWorkflows: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:automation:listWorkflows'),
     createWorkflow: (workflowData: any): Promise<IpcResponse<{ id: string }>> => ipcRenderer.invoke('fileflow:automation:createWorkflow', workflowData),
     triggerWorkflow: (workflowId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:automation:triggerWorkflow', workflowId),
+  },
+  tags: {
+    getAll: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:tags:getAll'),
+    create: (data: { name: string, color?: string }): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:tags:create', data),
+    delete: (id: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:tags:delete', id),
+    assignToFile: (filePath: string, tagId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:tags:assignToFile', filePath, tagId),
+    removeFromFile: (filePath: string, tagId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:tags:removeFromFile', filePath, tagId),
+    getTagsForFile: (filePath: string): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:tags:getTagsForFile', filePath),
   }
 };
 

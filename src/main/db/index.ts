@@ -115,6 +115,21 @@ sqlite.exec(`
     status TEXT NOT NULL DEFAULT 'idle',
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS tags (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT NOT NULL DEFAULT '#6366f1',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS file_tags (
+    id TEXT PRIMARY KEY,
+    file_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(file_id, tag_id)
+  );
 `);
 
 // Lightweight migration for new columns
