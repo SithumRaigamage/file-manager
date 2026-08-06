@@ -46,6 +46,15 @@ export function registerDuplicatesHandlers(): void {
     }
   });
 
+  ipcMain.handle('fileflow:duplicates:clear', async () => {
+    try {
+      db.delete(duplicateGroups).run();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: { code: 'CLEAR_FAILED', message: (error as Error).message } };
+    }
+  });
+
   ipcMain.handle('fileflow:duplicates:resolve', async (_event, groupId: string, _keepPath: string, deletePaths: string[]) => {
     try {
       for (const p of deletePaths) {

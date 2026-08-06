@@ -192,6 +192,7 @@ const fileflowApi = {
     scan: (dirPath: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:scan', dirPath),
     cancel: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:cancel'),
     getGroups: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:duplicates:getGroups'),
+    clear: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:clear'),
     resolve: (groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:resolve', groupId, keepPath, deletePaths),
     onProgress: (callback: (data: any) => void) => {
       const handler = (_event: IpcRendererEvent, data: any) => callback(data);

@@ -72,13 +72,14 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
       }
     },
 
-    reset: () => {
+    reset: async () => {
       set({
         progress: { phase: 'idle', scannedCount: 0, hashedCount: 0, totalToHash: 0 },
         groups: [],
         isScanning: false,
         error: null
       });
+      await window.fileflow.duplicates.clear();
     }
   };
 });
