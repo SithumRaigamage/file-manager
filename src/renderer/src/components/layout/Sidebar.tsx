@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive, Zap } from 'lucide-react'
+import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive, Zap, Wrench } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
@@ -58,6 +58,15 @@ const navItems = [
     color: 'text-amber-600',
     activeBg: 'bg-amber-50',
     activeBar: 'bg-amber-500'
+  },
+  {
+    to: '/toolkits',
+    icon: Wrench,
+    label: 'Toolkits',
+    description: 'File utilities',
+    color: 'text-indigo-500',
+    activeBg: 'bg-indigo-50',
+    activeBar: 'bg-indigo-600'
   },
   {
     to: '/analytics',

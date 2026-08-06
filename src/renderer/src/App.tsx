@@ -11,6 +11,8 @@ import { DuplicatesPage } from './components/pages/DuplicatesPage'
 import { AdvancedSearchPage } from './components/pages/AdvancedSearchPage'
 import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
 import { AutomationPage } from './components/pages/AutomationPage'
+import { ToolkitsPage } from './components/pages/ToolkitsPage'
+import { ImageToolkitPage } from './components/pages/ImageToolkitPage'
 import { CommandPalette } from './components/layout/CommandPalette'
 import './assets/main.css'
 
@@ -28,6 +30,8 @@ export default function App(): React.JSX.Element {
             <Route path="/converter" element={<ConverterPage />} />
             <Route path="/searcher" element={<AdvancedSearchPage />} />
             <Route path="/analytics" element={<LargeFileAnalyzerPage />} />
+            <Route path="/toolkits" element={<ToolkitsPage />} />
+            <Route path="/toolkits/image" element={<ImageToolkitPage />} />
             <Route path="/mp4-analyzer" element={<Mp4AnalyzerPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/duplicates" element={<DuplicatesPage />} />
