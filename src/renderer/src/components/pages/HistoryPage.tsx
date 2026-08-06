@@ -18,8 +18,8 @@ export function HistoryPage(): React.JSX.Element {
   }, [fetchBatches])
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Operation History</h2>
@@ -43,13 +43,13 @@ export function HistoryPage(): React.JSX.Element {
 
         <div className="space-y-4 max-w-4xl mx-auto">
           {batches.length === 0 && !isLoading ? (
-            <div className="text-center py-12 text-slate-500 bg-white border border-dashed rounded-xl">
+            <div className="text-center py-12 text-slate-500 bg-white/40 backdrop-blur-md border border-white/40 border-dashed rounded-xl">
               No operation history found.
             </div>
           ) : (
             batches.map(batch => (
               <Card key={batch.id}>
-                <CardHeader className="py-4 px-6 border-b bg-slate-50 flex flex-row items-center justify-between">
+                <CardHeader className="py-4 px-6 border-b bg-transparent flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="capitalize text-lg">{batch.type} Operation</CardTitle>
                     <CardDescription>{new Date(batch.timestamp).toLocaleString()}</CardDescription>
@@ -71,7 +71,7 @@ export function HistoryPage(): React.JSX.Element {
                 <CardContent className="p-0">
                   <div className="max-h-64 overflow-y-auto">
                     {batch.items.map((item, idx) => (
-                      <div key={idx} className={`px-6 py-3 border-b text-sm flex gap-4 items-center ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                      <div key={idx} className={`px-6 py-3 border-b text-sm flex gap-4 items-center ${idx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}`}>
                         <div className="flex-1 truncate text-slate-500" title={item.before}>{item.before.split('/').pop()}</div>
                         <div className="text-slate-300">→</div>
                         <div className="flex-1 truncate font-medium text-slate-700" title={item.after}>{item.after.split('/').pop()}</div>

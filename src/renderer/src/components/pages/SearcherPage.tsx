@@ -116,19 +116,19 @@ function LargeIconCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       onClick={() => onSelect(item)}
-      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
+      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
     >
       <button
         onClick={(e) => {
           e.stopPropagation()
           onRemove(item.fullPath)
         }}
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 z-10"
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-transparent text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-white/20 z-10"
         title="Remove from results"
       >
         <X size={12} />
       </button>
-      <div className="w-16 h-16 rounded-xl bg-gray-50 group-hover:bg-violet-50 flex items-center justify-center transition-colors">
+      <div className="w-16 h-16 rounded-xl bg-transparent group-hover:bg-violet-50 flex items-center justify-center transition-colors">
         {getLargeFileIcon(item)}
       </div>
       <p className="text-xs font-medium text-gray-700 text-center line-clamp-2 leading-tight w-full">
@@ -157,9 +157,9 @@ function TileCard({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={() => onSelect(item)}
-      className="relative flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-md hover:bg-violet-50/10 active:scale-98 cursor-pointer transition-all group"
+      className="relative flex items-center gap-3 p-3 rounded-xl bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-md hover:bg-violet-50/10 active:scale-98 cursor-pointer transition-all group"
     >
-      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center shrink-0">
         {getFileIcon(item)}
       </div>
       <div className="min-w-0 flex-1">
@@ -183,7 +183,7 @@ function TileCard({
             e.stopPropagation()
             onRemove(item.fullPath)
           }}
-          className="w-7 h-7 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 shrink-0"
+          className="w-7 h-7 rounded-lg bg-transparent text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-white/20 shrink-0"
           title="Remove from results"
         >
           <X size={13} />
@@ -245,7 +245,7 @@ function DetailsTable({
     <div className="overflow-auto flex-1">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50 sticky top-0">
+          <tr className="border-b border-white/20 bg-transparent sticky top-0">
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Name</th>
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Type</th>
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Size</th>
@@ -347,14 +347,14 @@ function TreeView({
               <ChevronRight size={12} className="text-gray-300" />
               <span className="text-xs text-gray-400 font-mono truncate">{parent}</span>
             </div>
-            <div className="ml-4 flex flex-col gap-1 border-l-2 border-gray-100 pl-4">
+            <div className="ml-4 flex flex-col gap-1 border-l-2 border-white/20 pl-4">
               {items.map((item) => (
                 <motion.div
                   key={item.fullPath}
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={() => onSelect(item)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-violet-300 hover:shadow-sm hover:bg-violet-50/10 active:scale-99 transition-all cursor-pointer group"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-sm hover:bg-violet-50/10 active:scale-99 transition-all cursor-pointer group"
                 >
                   {getFileIcon(item)}
                   <span className="text-sm text-gray-800 font-medium truncate flex-1">
@@ -409,7 +409,7 @@ function DriveDropdown({
       <button
         id="searcher-drive-dropdown"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-violet-300 text-sm font-medium text-gray-700 transition-all shadow-sm min-w-[180px] justify-between focus:outline-none"
+        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/40 backdrop-blur-md border border-white/40 border-white/30 hover:border-violet-300 text-sm font-medium text-gray-700 transition-all shadow-sm min-w-[180px] justify-between focus:outline-none"
       >
         <div className="flex items-center gap-2">
           <HardDrive size={15} className="text-violet-500 shrink-0" />
@@ -430,7 +430,7 @@ function DriveDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
+            className="absolute top-full left-0 mt-1 bg-white/40 backdrop-blur-md border border-white/40 border-white/30 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
           >
             {drives.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-3">No drives found</p>
@@ -502,7 +502,7 @@ function CollectModal({
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+        className="bg-white/40 rounded-2xl shadow-2xl p-6 max-w-md w-full"
       >
         {isCollecting ? (
           <>
@@ -544,7 +544,7 @@ function CollectModal({
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+            <div className="bg-transparent rounded-xl p-3 mb-4 flex items-center gap-2">
               <FolderOpen size={15} className="text-amber-500 shrink-0" />
               <span className="text-xs text-gray-600 font-mono truncate">
                 {collectResult.newFolderPath}
@@ -907,10 +907,10 @@ export function SearcherPage(): React.ReactElement {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
+    <div className="flex flex-col h-full bg-transparent/30 overflow-hidden">
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         {/* Top Header with Tabs */}
-        <div className="bg-white border-b border-gray-200 px-6 pt-4 shrink-0 shadow-sm z-10">
+        <div className="bg-white/5 backdrop-blur-md border-b border-white/20 border-white/30 px-6 pt-4 shrink-0 shadow-sm z-10">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
               <FolderSearch2 size={24} className="text-violet-600" />
@@ -919,21 +919,21 @@ export function SearcherPage(): React.ReactElement {
             <Tabs.List className="flex bg-gray-100 p-1 rounded-xl gap-1">
               <Tabs.Trigger
                 value="search"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-violet-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-violet-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Search size={14} />
                 Search
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="import"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Layers size={14} />
                 Import
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="automation"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-amber-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Zap size={14} />
                 Automation
@@ -948,10 +948,10 @@ export function SearcherPage(): React.ReactElement {
           className="flex flex-col h-full overflow-hidden focus:outline-none"
         >
           {/* Main Control Panel (re-organized) */}
-          <div className="shrink-0 bg-white border-b border-gray-100 shadow-sm relative z-0">
+          <div className="shrink-0 bg-white/5 backdrop-blur-md border-b border-white/20 shadow-sm relative z-0">
             {/* Row 1: Source + Query + Destination */}
             <div className="p-5 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 mr-auto">
+              <div className="flex items-center gap-2 text-xs text-gray-400 font-medium bg-transparent px-3 py-1.5 rounded-full border border-white/20 mr-auto">
                 <Info size={12} className="text-violet-400" />
                 Recursive tree mapping + exact match deduplication
               </div>
@@ -964,7 +964,7 @@ export function SearcherPage(): React.ReactElement {
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all shadow-sm max-w-[220px] focus:outline-none ${
                   sourceFolder
                     ? 'bg-violet-50 border-violet-200 text-violet-700'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-violet-300'
+                    : 'bg-white/40 backdrop-blur-md border border-white/40-gray-200 text-gray-600 hover:border-violet-300'
                 }`}
                 title={sourceFolder || 'Choose specific source folder'}
               >
@@ -983,7 +983,7 @@ export function SearcherPage(): React.ReactElement {
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all shadow-sm max-w-[220px] focus:outline-none ${
                   destinationFolder
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-violet-300'
+                    : 'bg-white/40 backdrop-blur-md border border-white/40-gray-200 text-gray-600 hover:border-violet-300'
                 }`}
                 title={destinationFolder || 'Choose collection destination'}
               >
@@ -1010,7 +1010,7 @@ export function SearcherPage(): React.ReactElement {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a name to search… (e.g. anime_1, MyDocument)"
-                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 focus:bg-white transition-all font-medium"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-white/30 bg-transparent text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 focus:bg-white/40 transition-all font-medium"
                 />
                 {query.trim() && (
                   <button
@@ -1062,7 +1062,7 @@ export function SearcherPage(): React.ReactElement {
                       placeholder="Filter keywords…"
                       value={keywordFilter}
                       onChange={(e) => setKeywordFilter(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1 rounded-lg border border-gray-100 bg-gray-50/50 text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-300 focus:bg-white transition-all font-medium"
+                      className="w-full pl-8 pr-3 py-1 rounded-lg border border-white/20 bg-transparent text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-300 focus:bg-white/40 transition-all font-medium"
                     />
                     {keywordFilter && (
                       <button
@@ -1081,7 +1081,7 @@ export function SearcherPage(): React.ReactElement {
                     .map((kw) => (
                       <div
                         key={kw}
-                        className="group flex items-center bg-white border border-gray-100 hover:border-violet-200 rounded-lg px-2 py-1 transition-all shadow-sm"
+                        className="group flex items-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-200 rounded-lg px-2 py-1 transition-all shadow-sm"
                       >
                         <button
                           onClick={() => {
@@ -1124,7 +1124,7 @@ export function SearcherPage(): React.ReactElement {
                     onClick={() => setViewMode(mode)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all focus:outline-none ${
                       viewMode === mode
-                        ? 'bg-white text-violet-700 shadow-sm'
+                        ? 'bg-white/40 text-violet-700 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -1211,7 +1211,7 @@ export function SearcherPage(): React.ReactElement {
                           setQuery(ex)
                           inputRef.current?.focus()
                         }}
-                        className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors font-mono focus:outline-none"
+                        className="text-xs px-3 py-1.5 bg-white/40 backdrop-blur-md border border-white/40 border-white/30 rounded-lg text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors font-mono focus:outline-none"
                       >
                         {ex}
                       </button>
@@ -1318,7 +1318,7 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'list' && (
                     <div className="p-4">
-                      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                      <div className="bg-white/40 rounded-2xl border border-white/20 overflow-hidden">
                         {results.map((item) => (
                           <ListRow
                             key={item.fullPath}
@@ -1361,7 +1361,7 @@ export function SearcherPage(): React.ReactElement {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+              className="bg-white/40 rounded-3xl border border-white/30 shadow-xl overflow-hidden"
             >
               <div className="bg-emerald-600 p-8 text-white relative overflow-hidden">
                 <div className="relative z-10">
@@ -1381,10 +1381,10 @@ export function SearcherPage(): React.ReactElement {
                 <div className="flex items-center gap-4 mb-8">
                   <button
                     onClick={handlePickImportRoot}
-                    className="flex-1 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group focus:outline-none"
+                    className="flex-1 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl border-2 border-dashed border-white/30 hover:border-emerald-300 hover:bg-emerald-50 transition-all group focus:outline-none"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                      <div className="w-12 h-12 rounded-xl bg-transparent group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
                         <FolderOpen
                           size={24}
                           className="text-gray-400 group-hover:text-emerald-600"
@@ -1452,7 +1452,7 @@ export function SearcherPage(): React.ReactElement {
                         {scannedKeywords.map((kw) => (
                           <div
                             key={kw}
-                            className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl group hover:border-emerald-200 transition-all"
+                            className="flex items-center justify-between gap-2 px-3 py-2 bg-transparent border border-white/20 rounded-xl group hover:border-emerald-200 transition-all"
                           >
                             <span className="text-xs font-mono font-medium text-gray-700 truncate">
                               {kw}
@@ -1495,7 +1495,7 @@ export function SearcherPage(): React.ReactElement {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+              className="bg-white/40 rounded-3xl border border-white/30 shadow-xl overflow-hidden"
             >
               <div className="bg-amber-500 p-8 text-white relative overflow-hidden">
                 <div className="relative z-10">
@@ -1527,7 +1527,7 @@ export function SearcherPage(): React.ReactElement {
                         <span>Overall Progress</span>
                         <span>{Math.round((automationStep / savedKeywords.length) * 100)}%</span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden border border-gray-200 p-0.5">
+                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden border border-white/30 p-0.5">
                         <motion.div
                           className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full shadow-sm"
                           animate={{ width: `${(automationStep / savedKeywords.length) * 100}%` }}
@@ -1552,13 +1552,13 @@ export function SearcherPage(): React.ReactElement {
                 ) : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                      <div className="p-5 rounded-2xl bg-transparent border border-white/20">
                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
                           Total Managed Keywords
                         </p>
                         <p className="text-3xl font-black text-gray-800">{savedKeywords.length}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                      <div className="p-5 rounded-2xl bg-transparent border border-white/20">
                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
                           Automation Scope
                         </p>
@@ -1609,7 +1609,7 @@ export function SearcherPage(): React.ReactElement {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="shrink-0 bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
+            className="shrink-0 bg-white/40 backdrop-blur-md border border-white/40-t border-white/20 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">

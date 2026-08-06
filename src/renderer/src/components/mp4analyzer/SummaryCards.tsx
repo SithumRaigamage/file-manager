@@ -62,7 +62,7 @@ export function SummaryCards({ summary }: SummaryCardsProps): React.JSX.Element 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: idx * 0.05 }}
             whileHover={{ y: -4, transition: { duration: 0.15 } }}
-            className="relative overflow-hidden bg-white border border-gray-100/80 rounded-2xl p-5 shadow-xs transition-shadow hover:shadow-md"
+            className="relative overflow-hidden bg-white/40 backdrop-blur-md border border-white/40 border-white/20/80 rounded-2xl p-5 shadow-xs transition-shadow hover:shadow-md"
           >
             {/* Soft decorative background shape */}
             <div

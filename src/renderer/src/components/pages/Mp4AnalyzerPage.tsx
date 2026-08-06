@@ -26,6 +26,10 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     resetStore
   } = useMp4AnalyzerStore()
 
+  useEffect(() => {
+    return () => resetStore()
+  }, [resetStore])
+
   // Subscribe to progress events from the main process
   useEffect(() => {
     const unsubscribe = window.api.mp4analyzer.onProgress((data) => {
@@ -84,7 +88,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-gray-50/20">
+    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-transparent/20">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -109,7 +113,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
             <>
               <button
                 onClick={handleSelectFile}
-                className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-xs active:bg-gray-100"
+                className="px-4 py-2 border border-white/30 bg-white/40 hover:bg-transparent text-gray-700 font-semibold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-xs active:bg-gray-100"
               >
                 <FileSearch size={15} className="text-gray-500" />
                 Select File
@@ -128,7 +132,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
 
       {/* Progress Section */}
       {scanState === 'scanning' && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-gray-400 truncate max-w-xs">
               Analyzing: <strong className="text-gray-700 font-bold">{progress.currentFile}</strong>
@@ -161,7 +165,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
 
       {/* Tabs navigation */}
       {results.length > 0 && (
-        <div className="border-b border-gray-100 flex items-center justify-between">
+        <div className="border-b border-white/20 flex items-center justify-between">
           <div className="flex gap-6">
             <button
               onClick={() => setActiveTab('table')}
@@ -210,7 +214,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       {/* Main Tab Panel Container */}
       <div className="flex-1 min-h-0 flex flex-col">
         {results.length === 0 && scanState !== 'scanning' ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-xs">
+          <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-10 text-center shadow-xs">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 shadow-xs">
               <FileSearch size={26} className="stroke-[2.2]" />
             </div>
@@ -222,7 +226,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={handleSelectFile}
-                className="px-4 py-2.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 border border-white/30 bg-white/40 hover:bg-transparent text-gray-700 font-bold rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all flex items-center gap-1.5"
               >
                 Choose file
               </button>

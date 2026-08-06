@@ -98,8 +98,8 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
 
   if (results.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-white border border-gray-100 rounded-2xl p-10 py-24 text-center shadow-xs">
-        <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3">
+      <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-10 py-24 text-center shadow-xs">
+        <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center text-gray-400 mb-3">
           <Activity size={24} />
         </div>
         <h3 className="text-sm font-semibold text-gray-800">No charts data</h3>
@@ -114,7 +114,7 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
     <div className="flex-1 overflow-auto space-y-6 pr-1">
       <div className="grid grid-cols-2 gap-6">
         {/* Pie Chart Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col h-80">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col h-80">
           <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
             <PieChartIcon size={16} className="text-gray-500 stroke-[2.2]" />
             Corruption Distribution
@@ -163,7 +163,7 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
         </div>
 
         {/* Bar/Histogram Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col h-80">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col h-80">
           <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
             <BarChart3 size={16} className="text-gray-500 stroke-[2.2]" />
             Health Score Distribution
@@ -201,7 +201,7 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
       </div>
 
       {/* Scatter Plot size vs health */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col h-80">
+      <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col h-80">
         <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
           <Activity size={16} className="text-gray-500 stroke-[2.2]" />
           Video Size vs Health Percentage

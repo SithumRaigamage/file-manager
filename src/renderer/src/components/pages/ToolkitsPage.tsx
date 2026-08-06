@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 
 export function ToolkitsPage(): React.JSX.Element {
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">

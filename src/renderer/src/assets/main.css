@@ -11,10 +11,11 @@
     --glass-blur: blur(24px);
   }
 
-  * {
+  *, ::before, ::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    border-color: var(--glass-border);
   }
 
   html,

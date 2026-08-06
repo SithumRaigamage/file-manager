@@ -20,6 +20,7 @@ interface OrganizerState {
   applyOrganize: () => Promise<void>
   toggleWatch: (ruleSet: any) => Promise<void>
   setPreviewItems: (items: OrganizePreviewItem[]) => void
+  reset: () => void
 }
 
 export const useOrganizerStore = create<OrganizerState>((set, get) => ({

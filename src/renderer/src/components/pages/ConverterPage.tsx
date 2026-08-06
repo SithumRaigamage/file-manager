@@ -16,8 +16,13 @@ export function ConverterPage(): React.JSX.Element {
     setPreset,
     enqueueConversion,
     cancelConversion,
-    initProgressListener
+    initProgressListener,
+    reset
   } = useConverterStore()
+
+  useEffect(() => {
+    return () => reset()
+  }, [reset])
 
   useEffect(() => {
     initProgressListener()
@@ -79,8 +84,8 @@ export function ConverterPage(): React.JSX.Element {
   })
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">High-Speed Converter</h2>
@@ -165,8 +170,8 @@ export function ConverterPage(): React.JSX.Element {
         </div>
 
         {/* Right Column: Preview & Action */}
-        <div className="flex-1 flex flex-col bg-white border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md border border-white/40 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b bg-transparent flex items-center justify-between">
             <h3 className="font-semibold text-slate-700 flex items-center gap-2">
               <Eye size={16} />
               Conversion Queue
@@ -187,7 +192,7 @@ export function ConverterPage(): React.JSX.Element {
           
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
-              <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-white/40/80 z-10 flex items-center justify-center">
                 <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 shadow-sm max-w-md text-center">
                   <p className="font-semibold">Error</p>
                   <p className="text-sm mt-1">{error}</p>

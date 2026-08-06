@@ -151,8 +151,8 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
 
   if (results.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-white border border-gray-100 rounded-2xl p-10 py-24 text-center shadow-xs">
-        <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3">
+      <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-10 py-24 text-center shadow-xs">
+        <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center text-gray-400 mb-3">
           <FileText size={24} />
         </div>
         <h3 className="text-sm font-semibold text-gray-800">No report generated</h3>
@@ -169,7 +169,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
   return (
     <div className="flex-1 overflow-auto space-y-6 pr-1">
       {/* Report overview */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs grid grid-cols-3 gap-8 items-center">
+      <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-6 shadow-xs grid grid-cols-3 gap-8 items-center">
         <div className="col-span-2 space-y-3">
           <div className="flex items-center gap-2">
             {overallHealth >= 90 ? (
@@ -189,7 +189,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* Big Health Score Badge */}
-        <div className="flex flex-col items-center justify-center border-l border-gray-100 h-full py-2">
+        <div className="flex flex-col items-center justify-center border-l border-white/20 h-full py-2">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             Library Health
           </span>
@@ -204,7 +204,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       {/* Export Cards */}
       <div className="grid grid-cols-3 gap-6">
         {/* CSV Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <FileSpreadsheet size={22} className="stroke-[2.2]" />
           </div>
@@ -225,7 +225,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* JSON Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <Braces size={22} className="stroke-[2.2]" />
           </div>
@@ -246,7 +246,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* PDF Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <FileText size={22} className="stroke-[2.2]" />
           </div>

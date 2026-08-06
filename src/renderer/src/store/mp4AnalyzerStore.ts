@@ -25,6 +25,8 @@ interface Mp4AnalyzerState {
   selectedFile: Mp4FileResult | null
 
   setResults: (results: Mp4FileResult[]) => void
+  setAnalysisResult: (result: Mp4AnalysisResult) => void
+  reset: () => void
   addResult: (result: Mp4FileResult) => void
   updateResult: (filePath: string, data: Partial<Mp4FileResult>) => void
   setScanState: (state: 'idle' | 'scanning' | 'paused' | 'done' | 'cancelled') => void

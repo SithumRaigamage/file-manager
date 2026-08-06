@@ -15,7 +15,7 @@ export function AutomationPage() {
 
   if (isBuilding) {
     return (
-      <div className="h-full bg-gray-50/50 overflow-auto p-6">
+      <div className="h-full bg-transparent overflow-auto p-6">
         <WorkflowBuilder 
           onCancel={() => setIsBuilding(false)} 
           onSuccess={() => {
@@ -28,8 +28,8 @@ export function AutomationPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50/50">
-      <div className="p-6 pb-4 border-b bg-white flex justify-between items-end">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="p-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Zap className="w-6 h-6 text-yellow-500" />
@@ -50,7 +50,7 @@ export function AutomationPage() {
         {isLoading && workflows.length === 0 ? (
           <div className="flex justify-center text-gray-500 p-8">Loading workflows...</div>
         ) : workflows.length === 0 ? (
-          <div className="text-center p-12 border-2 border-dashed rounded-xl border-gray-200">
+          <div className="text-center p-12 border-2 border-dashed rounded-xl border-white/30">
             <Zap className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-1">No Workflows Yet</h3>
             <p className="text-sm text-gray-500 mb-4">Create your first automated workflow to save time.</p>
@@ -85,7 +85,7 @@ export function AutomationPage() {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t">
+                  <div className="flex justify-between items-center pt-4 border-t border-white/20">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${wf.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       <span className="text-xs font-medium text-gray-500">{wf.isActive ? 'Active' : 'Disabled'}</span>
