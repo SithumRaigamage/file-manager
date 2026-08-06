@@ -34,7 +34,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   fetchSettings: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await window.api.settings.get();
+      const res = await window.fileflow.settings.get();
       if (res.ok && res.data) {
         set({ settings: { ...defaultSettings, ...res.data } });
       } else if (!res.ok) {
@@ -59,12 +59,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     });
 
     try {
-      const res = await window.api.settings.update({ [key]: value });
+      const res = await window.fileflow.settings.update({ [key]: value });
       if (!res.ok) {
         // Revert on failure
         set({ settings: previousSettings, error: res.error?.message || 'Failed to update setting' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on failure
       set({ settings: previousSettings, error: err.message || 'Failed to update setting' });
     }
