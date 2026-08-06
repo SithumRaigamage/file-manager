@@ -1,19 +1,68 @@
-name: Build Check
+name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [ "main" ]
   pull_request:
-    branches: [master, main]
+    branches: [ "main" ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - run: npm ci
+    - name: Lint
+      run: npm run lint
+    - name: Type Check
+      run: npm run typecheck
+    # Unit tests will be run here once configured (e.g. `npm test`)
+
+  build-mac:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - run: npm ci
+    - name: Build macOS unsigned
+      run: npm run build:mac
+      env:
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: dist/*.dmg
+
+  build-win:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - run: npm ci
+    - name: Build Windows unsigned
+      run: npm run build:win
+      env:
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: dist/*.exe

@@ -3,7 +3,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { execFile, spawn, ChildProcess } from 'child_process'
+import { spawn, execFile, ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import {
   Mp4FileResult,
@@ -19,41 +19,7 @@ const execFileAsync = promisify(execFile)
 const activeProcesses = new Set<ChildProcess>()
 let cancelRequested = false
 
-async function findFFmpeg(): Promise<string> {
-  const candidates = [
-    '/usr/local/bin/ffmpeg',
-    '/opt/homebrew/bin/ffmpeg',
-    '/usr/bin/ffmpeg',
-    'ffmpeg'
-  ]
-  for (const candidate of candidates) {
-    try {
-      await execFileAsync(candidate, ['-version'])
-      return candidate
-    } catch {
-      // continue
-    }
-  }
-  throw new Error('ffmpeg not found. Please install FFmpeg.')
-}
-
-async function findFFprobe(): Promise<string> {
-  const candidates = [
-    '/usr/local/bin/ffprobe',
-    '/opt/homebrew/bin/ffprobe',
-    '/usr/bin/ffprobe',
-    'ffprobe'
-  ]
-  for (const candidate of candidates) {
-    try {
-      await execFileAsync(candidate, ['-version'])
-      return candidate
-    } catch {
-      // continue
-    }
-  }
-  throw new Error('ffprobe not found. Please install FFmpeg (which includes ffprobe).')
-}
+import { resolveFFmpegPath, resolveFFprobePath } from '../features/converter/ffmpeg-locator'
 
 interface Box {
   type: string
@@ -578,8 +544,8 @@ export function registerMp4AnalyzerHandlers(): void {
       let ffprobePath = ''
       let ffmpegPath = ''
       try {
-        ffprobePath = await findFFprobe()
-        ffmpegPath = await findFFmpeg()
+        ffprobePath = await resolveFFprobePath()
+        ffmpegPath = await resolveFFmpegPath()
       } catch {
         // Return partial checks if FFmpeg is not found
         return {
@@ -700,8 +666,8 @@ export function registerMp4AnalyzerHandlers(): void {
       let ffprobePath = ''
       let ffmpegPath = ''
       try {
-        ffprobePath = await findFFprobe()
-        ffmpegPath = await findFFmpeg()
+        ffprobePath = await resolveFFprobePath()
+        ffmpegPath = await resolveFFmpegPath()
       } catch {
         // Ignored, fallback handling matches analyzeFile
       }
@@ -898,7 +864,7 @@ export function registerMp4AnalyzerHandlers(): void {
       command: string
     ): Promise<{ success: boolean; repairedPath: string; error?: string }> => {
       try {
-        const ffmpegPath = await findFFmpeg()
+        const ffmpegPath = await resolveFFmpegPath()
         const adjustedCommand = command.replace(/^ffmpeg /, `"${ffmpegPath}" `)
         const match = adjustedCommand.match(/"([^"]+)"\s*$/)
         const repairedPath = match ? match[1] : filePath.replace('.mp4', '_repaired.mp4')
