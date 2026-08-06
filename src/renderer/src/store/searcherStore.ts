@@ -122,9 +122,7 @@ export const useSearcherStore = create<SearcherState>()(
       saveKeywords: (kws) =>
         set((state) => {
           const existing = new Set(state.savedKeywords)
-          const newKws = kws
-            .map((k) => k.trim())
-            .filter((k) => k && !existing.has(k))
+          const newKws = kws.map((k) => k.trim()).filter((k) => k && !existing.has(k))
 
           if (newKws.length === 0) return state
           return { savedKeywords: [...newKws, ...state.savedKeywords] }

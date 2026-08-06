@@ -20,6 +20,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     addResult,
     setScanState,
     setProgress,
+    setScannedFolder,
     setActiveTab,
     setSelectedFile,
     resetStore
@@ -36,13 +37,14 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     return () => unsubscribe()
   }, [setProgress, addResult])
 
-  const handleSelectFile = async () => {
+  const handleSelectFile = async (): Promise<void> => {
     try {
       const filePaths = await window.api.openFiles()
       if (filePaths.length === 0) return
 
       resetStore()
       setScanState('scanning')
+      setScannedFolder(null)
       setProgress({ scanned: 0, total: 1, currentFile: filePaths[0] })
 
       const result = await window.api.mp4analyzer.analyzeFile(filePaths[0])
@@ -54,13 +56,14 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     }
   }
 
-  const handleSelectFolder = async () => {
+  const handleSelectFolder = async (): Promise<void> => {
     try {
       const folderPath = await window.api.openDirectory()
       if (!folderPath) return
 
       resetStore()
       setScanState('scanning')
+      setScannedFolder(folderPath)
       setProgress({ scanned: 0, total: 1, currentFile: 'Scanning folder...' })
 
       const scanResults = await window.api.mp4analyzer.analyzeFolder(folderPath)
@@ -72,14 +75,13 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     }
   }
 
-  const handleCancel = async () => {
+  const handleCancel = async (): Promise<void> => {
     await window.api.mp4analyzer.cancel()
     setScanState('cancelled')
   }
 
-  const overallProgressPercent = progress.total > 0
-    ? Math.round((progress.scanned / progress.total) * 100)
-    : 0
+  const overallProgressPercent =
+    progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-gray-50/20">
@@ -88,7 +90,8 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
         <div>
           <h1 className="text-xl font-bold text-gray-900 leading-tight">MP4 Integrity Analyzer</h1>
           <p className="text-xs text-gray-400 mt-1">
-            Scan and diagnose H.264/HEVC container structures, track boxes, and decodability integrity.
+            Scan and diagnose H.264/HEVC container structures, track boxes, and decodability
+            integrity.
           </p>
         </div>
 
@@ -141,7 +144,9 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
           </div>
 
           <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            <span>Progress: {Math.floor(progress.scanned)} / {progress.total} files</span>
+            <span>
+              Progress: {Math.floor(progress.scanned)} / {progress.total} files
+            </span>
             {progress.total > 1 && (
               <span className="animate-pulse flex items-center gap-1">
                 <RefreshCw size={10} className="animate-spin" /> Batch scan in progress...
@@ -211,7 +216,8 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
             </div>
             <h2 className="text-base font-bold text-gray-800">Start Video Diagnostics</h2>
             <p className="text-xs text-gray-400 mt-1.5 max-w-sm leading-relaxed">
-              Scan individual files or entire folders to analyze codec information, track structure hierarchy, and test frame playback decodability.
+              Scan individual files or entire folders to analyze codec information, track structure
+              hierarchy, and test frame playback decodability.
             </p>
             <div className="mt-6 flex items-center gap-3">
               <button
@@ -230,7 +236,9 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
           </div>
         ) : (
           <>
-            {activeTab === 'table' && <ResultsTable results={results} onSelectFile={setSelectedFile} />}
+            {activeTab === 'table' && (
+              <ResultsTable results={results} onSelectFile={setSelectedFile} />
+            )}
             {activeTab === 'charts' && <ChartsPanel results={results} />}
             {activeTab === 'report' && <ReportPanel results={results} summary={summary} />}
           </>

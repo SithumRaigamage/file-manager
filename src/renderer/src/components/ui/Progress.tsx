@@ -28,7 +28,10 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className={cn('h-full rounded-full transition-all duration-300 ease-out', colorClasses[color])}
+          className={cn(
+            'h-full rounded-full transition-all duration-300 ease-out',
+            colorClasses[color]
+          )}
           style={{ width: `${pct}%` }}
         />
       </div>

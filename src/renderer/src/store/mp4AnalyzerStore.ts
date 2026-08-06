@@ -20,6 +20,7 @@ interface Mp4AnalyzerState {
   summary: Mp4AnalyzerSummary
   scanState: 'idle' | 'scanning' | 'paused' | 'done' | 'cancelled'
   progress: Mp4ScanProgress
+  scannedFolder: string | null
   activeTab: 'table' | 'charts' | 'report'
   selectedFile: Mp4FileResult | null
 
@@ -28,6 +29,7 @@ interface Mp4AnalyzerState {
   updateResult: (filePath: string, data: Partial<Mp4FileResult>) => void
   setScanState: (state: 'idle' | 'scanning' | 'paused' | 'done' | 'cancelled') => void
   setProgress: (progress: Mp4ScanProgress) => void
+  setScannedFolder: (folder: string | null) => void
   setActiveTab: (tab: 'table' | 'charts' | 'report') => void
   setSelectedFile: (file: Mp4FileResult | null) => void
   removeResult: (filePath: string) => void
@@ -38,7 +40,7 @@ interface Mp4AnalyzerState {
 function calculateSummary(results: Mp4FileResult[]): Mp4AnalyzerSummary {
   const summary = { ...initialSummary }
   summary.totalFiles = results.length
-  
+
   for (const r of results) {
     if (r.corruptionLevel === 'healthy') {
       summary.healthyFiles++
@@ -59,6 +61,7 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set) => ({
   summary: initialSummary,
   scanState: 'idle',
   progress: initialProgress,
+  scannedFolder: null,
   activeTab: 'table',
   selectedFile: null,
 
@@ -90,12 +93,14 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set) => ({
       return {
         results: newResults,
         summary: calculateSummary(newResults),
-        selectedFile: s.selectedFile?.filePath === filePath ? { ...s.selectedFile, ...data } : s.selectedFile
+        selectedFile:
+          s.selectedFile?.filePath === filePath ? { ...s.selectedFile, ...data } : s.selectedFile
       }
     }),
 
   setScanState: (scanState) => set({ scanState }),
   setProgress: (progress) => set({ progress }),
+  setScannedFolder: (scannedFolder) => set({ scannedFolder }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setSelectedFile: (selectedFile) => set({ selectedFile }),
   removeResult: (filePath) =>
@@ -110,14 +115,20 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set) => ({
 
   removeFolderResults: (folderPath) =>
     set((s) => {
-      const normalizedFolder = folderPath.endsWith('/') || folderPath.endsWith('\\') ? folderPath : folderPath + '/'
+      const normalizedFolder =
+        folderPath.endsWith('/') || folderPath.endsWith('\\') ? folderPath : folderPath + '/'
       const newResults = s.results.filter((r) => {
         return r.filePath !== folderPath && !r.filePath.startsWith(normalizedFolder)
       })
       return {
         results: newResults,
         summary: calculateSummary(newResults),
-        selectedFile: s.selectedFile && (s.selectedFile.filePath === folderPath || s.selectedFile.filePath.startsWith(normalizedFolder)) ? null : s.selectedFile
+        selectedFile:
+          s.selectedFile &&
+          (s.selectedFile.filePath === folderPath ||
+            s.selectedFile.filePath.startsWith(normalizedFolder))
+            ? null
+            : s.selectedFile
       }
     }),
 
@@ -127,6 +138,7 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set) => ({
       summary: initialSummary,
       scanState: 'idle',
       progress: initialProgress,
-      selectedFile: null
+      selectedFile: null,
+      scannedFolder: null
     })
 }))

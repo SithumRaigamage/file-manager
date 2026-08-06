@@ -1,12 +1,30 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck } from 'lucide-react'
+import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive, Zap, Wrench } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
 const navItems = [
   {
     to: '/',
+    icon: FolderOpen,
+    label: 'Dashboard',
+    description: 'System overview',
+    color: 'text-indigo-600',
+    activeBg: 'bg-indigo-50',
+    activeBar: 'bg-indigo-600'
+  },
+  {
+    to: '/automation',
+    icon: Zap,
+    label: 'Automation',
+    description: 'Visual workflows',
+    color: 'text-yellow-600',
+    activeBg: 'bg-yellow-50',
+    activeBar: 'bg-yellow-500'
+  },
+  {
+    to: '/organizer',
     icon: FolderOpen,
     label: 'Organizer',
     description: 'Sort files by type',
@@ -35,11 +53,29 @@ const navItems = [
   {
     to: '/searcher',
     icon: Search,
-    label: 'Searcher',
-    description: 'Search & collect files',
+    label: 'Advanced Search',
+    description: 'Instant file search',
     color: 'text-amber-600',
     activeBg: 'bg-amber-50',
     activeBar: 'bg-amber-500'
+  },
+  {
+    to: '/toolkits',
+    icon: Wrench,
+    label: 'Toolkits',
+    description: 'File utilities',
+    color: 'text-indigo-500',
+    activeBg: 'bg-indigo-50',
+    activeBar: 'bg-indigo-600'
+  },
+  {
+    to: '/analytics',
+    icon: HardDrive,
+    label: 'Storage Analytics',
+    description: 'Visualize usage',
+    color: 'text-teal-600',
+    activeBg: 'bg-teal-50',
+    activeBar: 'bg-teal-600'
   },
   {
     to: '/mp4-analyzer',
@@ -49,6 +85,24 @@ const navItems = [
     color: 'text-rose-600',
     activeBg: 'bg-rose-50',
     activeBar: 'bg-rose-600'
+  },
+  {
+    to: '/duplicates',
+    icon: Layers,
+    label: 'Duplicates',
+    description: 'Find identical files',
+    color: 'text-cyan-600',
+    activeBg: 'bg-cyan-50',
+    activeBar: 'bg-cyan-600'
+  },
+  {
+    to: '/history',
+    icon: History,
+    label: 'History',
+    description: 'Undo past operations',
+    color: 'text-slate-600',
+    activeBg: 'bg-slate-100',
+    activeBar: 'bg-slate-600'
   }
 ]
 
@@ -74,9 +128,7 @@ export function Sidebar(): React.ReactElement {
       <nav className="flex-1 px-3 py-2 space-y-1">
         {navItems.map((item) => {
           const isActive =
-            item.to === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.to)
+            item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
 
           return (
             <NavLink
@@ -84,9 +136,7 @@ export function Sidebar(): React.ReactElement {
               to={item.to}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group cursor-pointer',
-                isActive
-                  ? `${item.activeBg}`
-                  : 'hover:bg-white hover:shadow-sm'
+                isActive ? `${item.activeBg}` : 'hover:bg-white hover:shadow-sm'
               )}
             >
               {isActive && (

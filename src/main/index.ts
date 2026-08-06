@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, protocol } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, protocol, crashReporter } from 'electron'
 import { join, normalize, extname } from 'path'
 import * as fs from 'fs'
 import { Readable } from 'stream'
@@ -9,6 +9,33 @@ import { registerRenamerHandlers } from './ipc/renamer'
 import { registerConverterHandlers } from './ipc/converter'
 import { registerSearcherHandlers } from './ipc/searcher'
 import { registerMp4AnalyzerHandlers } from './ipc/mp4analyzer'
+import { registerHistoryHandlers } from './ipc/history'
+import { registerSettingsIpc } from './ipc/settings'
+import { registerDuplicatesHandlers } from './ipc/duplicates'
+import { registerDashboardHandlers } from './ipc/dashboard'
+import { registerIndexerHandlers } from './ipc/indexer'
+import { registerAnalyticsHandlers } from './ipc/analytics'
+import { registerAutomationHandlers } from './ipc/automation'
+import { registerTagsHandlers } from './ipc/tags'
+import { registerAIHandlers } from './ipc/ai'
+import { schedulerService } from './features/automation/scheduler-service'
+import { db } from './db'
+import { appSettings } from './db/schema'
+import { eq } from 'drizzle-orm'
+
+// Initialize crash reporter before app is ready if enabled
+try {
+  const settingsRows = db.select().from(appSettings).where(eq(appSettings.id, 'default')).all()
+  if (settingsRows.length > 0 && settingsRows[0].crashReportingOptIn) {
+    crashReporter.start({
+      submitURL: 'https://example.com/api/crash-reports', // Replace with real URL
+      uploadToServer: true,
+      ignoreSystemCrashHandler: false
+    })
+  }
+} catch (error) {
+  console.warn('Failed to initialize crash reporter from settings', error)
+}
 
 // Register custom media protocol privileges before app ready
 protocol.registerSchemesAsPrivileged([
@@ -78,7 +105,10 @@ function createWindow(): void {
   }
 }
 
+import { initializeScheduler, stopScheduler } from './scheduler'
+
 app.whenReady().then(() => {
+  initializeScheduler()
   electronApp.setAppUserModelId('com.filemanager.app')
 
   app.on('browser-window-created', (_, window) => {
@@ -90,7 +120,7 @@ app.whenReady().then(() => {
     try {
       console.log('Media protocol requested URL:', request.url)
       const url = new URL(request.url)
-      
+
       let filePath = ''
       if (url.host) {
         filePath = url.host + url.pathname
@@ -100,17 +130,17 @@ app.whenReady().then(() => {
       } else {
         filePath = url.pathname
       }
-      
+
       filePath = decodeURIComponent(filePath)
       if (process.platform === 'win32' && filePath.startsWith('/')) {
         filePath = filePath.slice(1)
       }
-      
+
       // Map case-lowercased 'users' host segment back to 'Users' on macOS/Linux systems to prevent case issues
       if (process.platform !== 'win32' && filePath.startsWith('/users/')) {
         filePath = '/Users/' + filePath.slice(7)
       }
-      
+
       filePath = normalize(filePath)
       console.log('Resolved filesystem path:', filePath)
 
@@ -139,7 +169,7 @@ app.whenReady().then(() => {
           'Content-Type': mimeType
         })
 
-        return new Response(Readable.toWeb(fileStream) as any, {
+        return new Response(Readable.toWeb(fileStream) as unknown as BodyInit, {
           status: 206,
           statusText: 'Partial Content',
           headers: responseHeaders
@@ -151,7 +181,7 @@ app.whenReady().then(() => {
           'Content-Type': mimeType,
           'Accept-Ranges': 'bytes'
         })
-        return new Response(Readable.toWeb(fileStream) as any, {
+        return new Response(Readable.toWeb(fileStream) as unknown as BodyInit, {
           status: 200,
           headers: responseHeaders
         })
@@ -168,6 +198,18 @@ app.whenReady().then(() => {
   registerConverterHandlers()
   registerSearcherHandlers()
   registerMp4AnalyzerHandlers()
+  registerHistoryHandlers()
+  registerSettingsIpc()
+  registerDuplicatesHandlers()
+  registerDashboardHandlers()
+  registerIndexerHandlers()
+  registerAnalyticsHandlers()
+  registerAutomationHandlers()
+  registerTagsHandlers()
+  registerAIHandlers()
+
+  // Start scheduler
+  schedulerService.start()
 
   // Dialog handlers
   ipcMain.handle('dialog:openDirectory', async () => {
@@ -196,6 +238,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopScheduler()
   if (process.platform !== 'darwin') {
     app.quit()
   }

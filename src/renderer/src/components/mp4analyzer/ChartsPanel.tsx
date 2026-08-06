@@ -21,10 +21,10 @@ interface ChartsPanelProps {
 }
 
 const COLORS = {
-  healthy: '#10b981',      // Emerald 500
-  minor: '#f59e0b',        // Amber 500
-  moderate: '#f97316',     // Orange 500
-  severe: '#ef4444',       // Red 500
+  healthy: '#10b981', // Emerald 500
+  minor: '#f59e0b', // Amber 500
+  moderate: '#f97316', // Orange 500
+  severe: '#ef4444', // Red 500
   unrecoverable: '#991b1b' // Red 800
 }
 
@@ -38,7 +38,7 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
       severe: 0,
       unrecoverable: 0
     }
-    
+
     for (const r of results) {
       counts[r.corruptionLevel]++
     }
@@ -137,7 +137,10 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
                     dataKey="value"
                   >
                     {pieData.map((entry) => (
-                      <Cell key={`cell-${entry.key}`} fill={COLORS[entry.key as keyof typeof COLORS] || '#ccc'} />
+                      <Cell
+                        key={`cell-${entry.key}`}
+                        fill={COLORS[entry.key as keyof typeof COLORS] || '#ccc'}
+                      />
                     ))}
                   </Pie>
                   <Tooltip
@@ -149,7 +152,9 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
                     verticalAlign="bottom"
                     iconSize={10}
                     iconType="circle"
-                    formatter={(value) => <span className="text-xs font-semibold text-gray-500">{value}</span>}
+                    formatter={(value) => (
+                      <span className="text-xs font-semibold text-gray-500">{value}</span>
+                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -166,8 +171,18 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: '#94a3b8' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
                   contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px' }}

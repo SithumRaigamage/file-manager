@@ -1,0 +1,49 @@
+# RISKS.md
+
+## Technical Risks
+
+| Risk                                                                              | Impact                                                                                 | Mitigation                                                                                                                                                                         |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Destructive file operations (move/rename/overwrite) cause irreversible data loss  | High — directly undermines core trust proposition (see PROJECT-VISION success metrics) | Preview-before-commit + Smart Undo as non-negotiable baseline features (see FEATURE-SPECIFICATION.md); default to "copy" over "move" where ambiguous, configurable in AppSettings. |
+| FFmpeg version/availability mismatch across platforms                             | Medium — Converter tool fails for a subset of users                                    | Bundle a tested FFmpeg version by default; explicit detection + clear error messaging (`FFMPEG_NOT_FOUND`); allow manual path override.                                            |
+| Electron renderer freezing on large batches (10k+ files)                          | Medium — core scalability promise (PROJECT-VISION metric) broken                       | All heavy work in main process; streaming IPC progress; virtualized file-list rendering (see SYSTEM-ARCHITECTURE.md, API-CONTRACT.md performance notes).                           |
+| OS-level file-watcher limits (some systems cap concurrent watch handles)          | Medium — Organizer Auto Mode silently stops working on large multi-folder setups       | Graceful fallback to manual "Organize Now" scan with explicit user-facing error (see INTEGRATIONS.md).                                                                             |
+| Cross-platform path/case-sensitivity differences causing silent rename collisions | Medium                                                                                 | Explicit conflict detection layer in Rename Engine tested against both case-sensitive and case-insensitive file systems (see FEATURE-SPECIFICATION.md edge cases).                 |
+
+## Business Risks
+
+| Risk                                                                                                      | Impact      | Mitigation                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Crowded, mature competitive set (Hazel, Bulk Rename Utility, HandBrake all have long-tenured loyal users) | Medium-High | Differentiate on the _unified workflow_ (organize+rename+convert in one app), not on out-competing any single tool at its own specialty (see MARKET-RESEARCH.md, PRODUCT-STRATEGY.md). |
+| Monetization model undecided                                                                              | Medium      | Flagged explicitly in PRODUCT-STRATEGY.md as an open decision requiring founder input before pricing/paywall implementation begins.                                                    |
+| Windows organizer category is young but has fast-moving competitors (File Arbor) actively iterating       | Medium      | Prioritize MVP speed on Organizer's Quick Rules + Auto Mode to avoid ceding the "modern cross-platform Hazel alternative" positioning window.                                          |
+
+## Legal Risks
+
+| Risk                                                         | Impact     | Mitigation                                                                                                                                                 |
+| ------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FFmpeg licensing (LGPL/GPL depending on build configuration) | Low-Medium | Use LGPL-compliant FFmpeg build/linking approach if bundling; document compliance in an OSS-notices file at packaging time (Task in `tasks/07-Launch.md`). |
+| Code-signing/notarization requirements for distribution      | Low        | Budget for Apple Developer Program + Windows code-signing certificate as a launch-blocking line item (see INFRASTRUCTURE.md, `tasks/07-Launch.md`).        |
+
+## Performance Risks
+
+| Risk                                                                   | Impact | Mitigation                                                                                                                                |
+| ---------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Large-batch conversion jobs consuming excessive CPU/battery on laptops | Medium | Configurable worker/concurrency limit for FFmpeg jobs; visible pause/cancel controls (see FEATURE-SPECIFICATION.md Converter edge cases). |
+| Disk space exhaustion mid-batch-conversion                             | Medium | Pre-flight disk space estimate check before starting large batches (see FEATURE-SPECIFICATION.md).                                        |
+
+## Open Risk Items Requiring Founder Decision
+
+- Distribution channel (direct download + GitHub Releases vs. Mac App Store / Microsoft Store, which impose their own sandboxing constraints that may conflict with file-watcher/FFmpeg needs).
+- Bundled vs. system FFmpeg (affects installer size, legal packaging, and support burden — see TECH-STACK.md open question).
+
+## Platform Expansion Risks (from `docs/PLATFORM-FEATURES-V2.md`)
+
+| Risk                                                                                                                              | Impact               | Mitigation                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scope creep undermines MVP timeline and clarity**                                                                               | High                 | The 40-feature platform vision is explicitly sequenced as post-MVP (`docs/PRODUCT-STRATEGY.md` roadmap table); `tasks/03-MVP.md` scope is unchanged. Each phase re-justifies itself before work begins (see PRODUCT-STRATEGY.md standing principle).                                      |
+| **AI features (organizer, smart rename, assistant) conflict with local-first/privacy positioning**                                | Medium-High          | AI features ship as an inspectable, overridable _suggestion layer_ over the deterministic engine, never silent/default-on (see PLATFORM-FEATURES-V2.md v2.2 notes); face-recognition-based renaming specifically requires explicit, informed consent flows, not a buried settings toggle. |
+| **Plugin marketplace introduces a new attack surface**                                                                            | High (if mishandled) | Capability-based permission model designed _before_ any plugin marketplace UI (see SYSTEM-ARCHITECTURE.md Plugin Architecture) — a plugin must declare and be granted only the specific domains it needs (filesystem, FFmpeg, network), never ambient access.                             |
+| **Cloud sync/integration (v2.4) introduces first real network data-handling obligation**                                          | Medium-High          | Explicit opt-in required; data-handling/privacy policy must be defined before implementation begins (see INTEGRATIONS.md, INFRASTRUCTURE.md Cloud Resources).                                                                                                                             |
+| **Duplicate finder and bulk-delete style operations (recycle center, security center) are high-blast-radius destructive actions** | High                 | Must inherit the same preview-before-commit + reversible-undo baseline established for MVP's Organizer/Renamer (see FEATURE-SPECIFICATION.md, DESIGN-SYSTEM.md) — no destructive platform feature ships without this pattern.                                                             |
+| **Enterprise features (v3.0) target a different buyer than the prosumer/freelancer MVP beachhead**                                | Medium               | Deliberately sequenced last, only after single-user product-market fit is established (see PRODUCT-STRATEGY.md roadmap table) — avoids building RBAC/audit-log infrastructure before there's a paying single-user base to justify it.                                                     |

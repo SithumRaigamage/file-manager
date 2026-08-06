@@ -319,14 +319,20 @@ export function registerSearcherHandlers(): void {
   // Batch search for multiple keywords in one scan
   ipcMain.handle(
     'searcher:batch-search',
-    async (event, params: { drivePath: string; queries: string[] }): Promise<Record<string, SearchResult[]>> => {
+    async (
+      event,
+      params: { drivePath: string; queries: string[] }
+    ): Promise<Record<string, SearchResult[]>> => {
       const { drivePath, queries } = params
       if (queries.length === 0) return {}
 
-      const keywordMap = queries.reduce((acc, q) => {
-        acc[q] = { variants: generateVariants(q), results: [] }
-        return acc
-      }, {} as Record<string, { variants: string[]; results: SearchResult[] }>)
+      const keywordMap = queries.reduce(
+        (acc, q) => {
+          acc[q] = { variants: generateVariants(q), results: [] }
+          return acc
+        },
+        {} as Record<string, { variants: string[]; results: SearchResult[] }>
+      )
 
       const state = { scanned: 0 }
       const onProgress = (scanned: number, found: number): void => {
@@ -371,7 +377,7 @@ export function registerSearcherHandlers(): void {
                   childCount: 0
                 })
                 matchedAny = true
-                // Note: We don't 'break' here because a file might match multiple keywords 
+                // Note: We don't 'break' here because a file might match multiple keywords
                 // but for 'move' automation, we'll handle the first match later.
               }
             }

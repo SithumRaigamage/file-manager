@@ -157,4 +157,25 @@ export function registerOrganizerHandlers(): void {
 
     return { totalFiles: files.length, byExtension: stats }
   })
+
+  // Watcher Service API
+  ipcMain.handle('organizer:startWatching', async (_, ruleId: string, folderPath: string) => {
+    try {
+      const { WatcherService } = await import('../domain/watcher/watcher-service')
+      WatcherService.watchFolder(ruleId, folderPath)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('organizer:stopWatching', async (_, ruleId: string, folderPath: string) => {
+    try {
+      const { WatcherService } = await import('../domain/watcher/watcher-service')
+      WatcherService.unwatchFolder(ruleId, folderPath)
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: (err as Error).message }
+    }
+  })
 }
