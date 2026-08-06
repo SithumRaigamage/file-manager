@@ -78,6 +78,7 @@ declare global {
       ai: {
         checkStatus(): Promise<IpcResponse<{ isAvailable: boolean; message?: string }>>;
         suggestCategories(folderPath: string, categories: string[]): Promise<IpcResponse<any[]>>;
+        executeCommand(query: string): Promise<IpcResponse<{ message: string; details?: any }>>;
       };
     };
     api: any;

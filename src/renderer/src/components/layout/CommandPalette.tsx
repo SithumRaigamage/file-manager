@@ -7,6 +7,8 @@ export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{ message: string, details?: any } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -32,6 +34,7 @@ export function CommandPalette() {
     } else {
       setQuery('');
       setResults([]);
+      setAiResult(null);
     }
   }, [isOpen]);
 
@@ -74,6 +77,35 @@ export function CommandPalette() {
     setIsOpen(false);
   };
 
+  const handleAskAI = async () => {
+    if (!query) return;
+    setIsAILoading(true);
+    setAiResult(null);
+    
+    try {
+      const res = await window.fileflow.ai.executeCommand(query);
+      if (res.ok) {
+        setAiResult(res.data);
+      } else {
+        setAiResult({ message: `Error: ${res.error?.message || 'Unknown error'}` });
+      }
+    } catch (err) {
+      setAiResult({ message: `Error: ${(err as Error).message}` });
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      if (results.length > 0) {
+        handleSelect(results[0]);
+      } else if (query.trim().length > 0) {
+        handleAskAI();
+      }
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -101,9 +133,13 @@ export function CommandPalette() {
                 ref={inputRef}
                 type="text"
                 className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-gray-400"
-                placeholder="Type a command or search..."
+                placeholder="Type a command or ask AI..."
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={e => {
+                  setQuery(e.target.value);
+                  setAiResult(null);
+                }}
+                onKeyDown={handleInputKeyDown}
               />
               <div className="flex gap-1 text-xs text-gray-400 font-mono">
                 <span className="px-1.5 py-0.5 rounded bg-gray-100 border">ESC</span>
@@ -111,8 +147,34 @@ export function CommandPalette() {
             </div>
 
             <div className="max-h-96 overflow-y-auto p-2">
-              {results.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No results found for "{query}"</div>
+              {isAILoading ? (
+                <div className="p-8 flex flex-col items-center justify-center text-gray-500">
+                  <RefreshCw className="w-6 h-6 animate-spin text-indigo-500 mb-4" />
+                  <p>AI is thinking...</p>
+                </div>
+              ) : aiResult ? (
+                <div className="p-6">
+                  <div className="bg-indigo-50 text-indigo-800 p-4 rounded-lg border border-indigo-100">
+                    <p className="font-medium text-lg">{aiResult.message}</p>
+                    {aiResult.details && (
+                      <div className="mt-4 p-3 bg-white rounded border border-indigo-50 text-sm font-mono text-slate-600">
+                        <p className="font-bold mb-1 text-xs text-indigo-400 uppercase">Parsed Intent</p>
+                        {JSON.stringify(aiResult.details, null, 2)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : results.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  <div className="mb-2">No navigation matches.</div>
+                  <button 
+                    onClick={handleAskAI}
+                    className="mt-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium flex items-center justify-center w-full"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Ask AI: "{query}"
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-1">
                   {results.map((result, idx) => (

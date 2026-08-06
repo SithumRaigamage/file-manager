@@ -232,6 +232,7 @@ const fileflowApi = {
   ai: {
     checkStatus: (): Promise<IpcResponse<{ isAvailable: boolean; message?: string }>> => ipcRenderer.invoke('fileflow:ai:checkStatus'),
     suggestCategories: (folderPath: string, categories: string[]): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:ai:suggestCategories', folderPath, categories),
+    executeCommand: (query: string): Promise<IpcResponse<{ message: string; details?: any }>> => ipcRenderer.invoke('fileflow:ai:executeCommand', query),
   }
 };
 
