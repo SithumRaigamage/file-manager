@@ -23,20 +23,6 @@ import { db } from './db'
 import { appSettings } from './db/schema'
 import { eq } from 'drizzle-orm'
 
-// Initialize crash reporter before app is ready if enabled
-try {
-  const settingsRows = db.select().from(appSettings).where(eq(appSettings.id, 'default')).all()
-  if (settingsRows.length > 0 && settingsRows[0].crashReportingOptIn) {
-    crashReporter.start({
-      submitURL: 'https://example.com/api/crash-reports', // Replace with real URL
-      uploadToServer: true,
-      ignoreSystemCrashHandler: false
-    })
-  }
-} catch (error) {
-  console.warn('Failed to initialize crash reporter from settings', error)
-}
-
 // Register custom media protocol privileges before app ready
 protocol.registerSchemesAsPrivileged([
   {
@@ -113,6 +99,21 @@ function createWindow(): void {
 import { initializeScheduler, stopScheduler } from './scheduler'
 
 app.whenReady().then(() => {
+  // Initialize crash reporter after app is ready, only if user has opted in
+  // We do this here (not at module load) so the DB schema is fully initialized
+  try {
+    const settingsRows = db.select().from(appSettings).where(eq(appSettings.id, 'default')).all()
+    if (settingsRows.length > 0 && settingsRows[0].crashReportingOptIn) {
+      crashReporter.start({
+        submitURL: 'https://example.com/api/crash-reports', // Replace with real URL
+        uploadToServer: true,
+        ignoreSystemCrashHandler: false
+      })
+    }
+  } catch (error) {
+    console.warn('Failed to initialize crash reporter from settings', error)
+  }
+
   initializeScheduler()
   electronApp.setAppUserModelId('com.filemanager.app')
 

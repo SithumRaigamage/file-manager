@@ -11,6 +11,8 @@ export class WatcherService {
   private static watchers = new Map<string, FSWatcher>();
   // Maps folderPath -> Set of active Rule IDs
   private static folderToRules = new Map<string, Set<string>>();
+  // Maps watcherId -> folderPath (for proper unwatching)
+  private static watcherIds = new Map<string, string>();
 
   static watchFolder(ruleId: string, folderPath: string): void {
     const absolutePath = path.resolve(folderPath);
@@ -56,7 +58,7 @@ export class WatcherService {
     const rules = this.folderToRules.get(absolutePath);
     if (rules) {
       rules.delete(ruleId);
-      
+
       // If no more rules are watching this folder, close the watcher
       if (rules.size === 0) {
         this.folderToRules.delete(absolutePath);
@@ -69,6 +71,44 @@ export class WatcherService {
         }
       }
     }
+  }
+
+  /**
+   * Track a watcherId so it can be unwatched later via unwatchById.
+   * watcherId maps to the folderPath being watched.
+   */
+  static trackWatcherId(watcherId: string, folderPath: string): void {
+    this.watcherIds.set(watcherId, folderPath);
+  }
+
+  /**
+   * Stop watching using a previously-tracked watcherId.
+   * Also removes the watcherId and any rule associations for that folder.
+   */
+  static async unwatchById(watcherId: string): Promise<boolean> {
+    const folderPath = this.watcherIds.get(watcherId);
+    if (!folderPath) {
+      return false;
+    }
+
+    this.watcherIds.delete(watcherId);
+    const absolutePath = path.resolve(folderPath);
+
+    // Close the chokidar watcher if it exists
+    const watcher = this.watchers.get(absolutePath);
+    if (watcher) {
+      try {
+        await watcher.close();
+      } catch (err) {
+        console.error(`[Watcher] Error closing watcher for ${absolutePath}:`, err);
+      }
+      this.watchers.delete(absolutePath);
+    }
+
+    // Remove all rule associations for this folder
+    this.folderToRules.delete(absolutePath);
+
+    return true;
   }
 
   static unwatchAll(): void {
