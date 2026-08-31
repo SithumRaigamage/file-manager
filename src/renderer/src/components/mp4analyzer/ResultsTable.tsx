@@ -139,9 +139,9 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
+    <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl overflow-hidden shadow-xs">
       {/* Controls Bar */}
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
+      <div className="p-4 border-b border-white/20 bg-transparent flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -149,7 +149,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             placeholder="Search scanned files..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/40"
           />
         </div>
 
@@ -159,7 +159,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-gray-700 font-medium cursor-pointer"
+              className="text-sm border border-white/30 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/40 text-gray-700 font-medium cursor-pointer"
             >
               <option value="all">All States</option>
               <option value="healthy">Healthy</option>
@@ -187,7 +187,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
       <div className="flex-1 overflow-auto">
         {filteredResults.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-20 px-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3">
+            <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center text-gray-400 mb-3">
               <FileVideo2 size={24} />
             </div>
             <h3 className="text-sm font-semibold text-gray-800">No matching videos</h3>
@@ -200,27 +200,27 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/30 text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
+              <tr className="border-b border-white/20 bg-transparent/30 text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('fileName')}
                 >
                   File Name {renderSortIcon('fileName')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('fileSize')}
                 >
                   Size {renderSortIcon('fileSize')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('healthScore')}
                 >
                   Health Score {renderSortIcon('healthScore')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('corruptionLevel')}
                 >
                   Status {renderSortIcon('corruptionLevel')}
@@ -239,7 +239,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                 return (
                   <tr
                     key={r.filePath}
-                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                    className="hover:bg-transparent transition-colors group cursor-pointer"
                     onClick={() => onSelectFile(r)}
                   >
                     <td className="py-3.5 px-4 max-w-[240px] truncate">
@@ -334,7 +334,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 text-xs text-gray-400 flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-white/20 bg-transparent/30 text-xs text-gray-400 flex items-center justify-between">
         <span>
           Showing {filteredResults.length} of {results.length} files
         </span>

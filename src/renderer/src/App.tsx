@@ -13,6 +13,7 @@ import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
 import { AutomationPage } from './components/pages/AutomationPage'
 import { ToolkitsPage } from './components/pages/ToolkitsPage'
 import { ImageToolkitPage } from './components/pages/ImageToolkitPage'
+import { SettingsPage } from './components/pages/SettingsPage'
 import { CommandPalette } from './components/layout/CommandPalette'
 import './assets/main.css'
 
@@ -39,6 +40,7 @@ export default function App(): React.JSX.Element {
             <Route path="/analytics" element={<LargeFileAnalyzerPage />} />
             <Route path="/toolkits" element={<ToolkitsPage />} />
             <Route path="/toolkits/image" element={<ImageToolkitPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/mp4-analyzer" element={<Mp4AnalyzerPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/duplicates" element={<DuplicatesPage />} />

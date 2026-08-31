@@ -24,6 +24,7 @@ interface DuplicateStore {
   cancelScan: () => Promise<void>;
   fetchGroups: () => Promise<void>;
   resolveGroup: (groupId: string, keepPath: string, deletePaths: string[]) => Promise<void>;
+  reset: () => void;
 }
 
 export const useDuplicateStore = create<DuplicateStore>((set, get) => {
@@ -69,6 +70,16 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
           groups: state.groups.filter(g => g.id !== groupId)
         }));
       }
+    },
+
+    reset: async () => {
+      set({
+        progress: { phase: 'idle', scannedCount: 0, hashedCount: 0, totalToHash: 0 },
+        groups: [],
+        isScanning: false,
+        error: null
+      });
+      await window.fileflow.duplicates.clear();
     }
   };
 });

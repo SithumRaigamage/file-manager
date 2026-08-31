@@ -28,7 +28,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic border rounded-md bg-slate-50">
+      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic border rounded-md bg-transparent">
         No files to preview.
       </div>
     )
@@ -37,7 +37,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
   return (
     <div 
       ref={parentRef} 
-      className="flex-1 overflow-auto border rounded-md bg-white w-full shadow-sm"
+      className="flex-1 overflow-auto border rounded-md bg-white/40 w-full shadow-sm"
     >
       <div
         className="w-full relative"
@@ -50,8 +50,8 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
           return (
             <div
               key={virtualRow.index}
-              className={`absolute top-0 left-0 w-full px-4 border-b border-slate-100 flex items-center gap-4 text-sm
-                ${virtualRow.index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}
+              className={`absolute top-0 left-0 w-full px-4 border-b border-white/20 flex items-center gap-4 text-sm
+                ${virtualRow.index % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}
                 ${item.conflict ? 'bg-red-50' : ''}
               `}
               style={{

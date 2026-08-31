@@ -180,10 +180,10 @@ export function FileDetailDrawer({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 220 }}
-            className="fixed top-0 right-0 w-[520px] h-full bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100 overflow-hidden"
+            className="fixed top-0 right-0 w-[520px] h-full bg-white/40 shadow-2xl z-50 flex flex-col border-l border-white/20 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="p-5 border-b border-white/20 flex items-center justify-between bg-transparent">
               <div className="min-w-0 pr-4">
                 <h2 className="text-base font-bold text-gray-900 truncate" title={file.fileName}>
                   {file.fileName}
@@ -233,7 +233,7 @@ export function FileDetailDrawer({
             </div>
 
             {/* Sub-Header Tabs */}
-            <div className="flex px-4 border-b border-gray-100 bg-gray-50/20 text-xs font-semibold text-gray-500">
+            <div className="flex px-4 border-b border-white/20 bg-transparent/20 text-xs font-semibold text-gray-500">
               <button
                 onClick={() => setActiveTab('diagnostics')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
@@ -282,7 +282,7 @@ export function FileDetailDrawer({
               {activeTab === 'diagnostics' && (
                 <div className="space-y-6">
                   {/* Quick Status banner */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50/60 border border-gray-100 rounded-2xl">
+                  <div className="flex items-center justify-between p-4 bg-transparent/60 border border-white/20 rounded-2xl">
                     <div>
                       <span className="text-xs font-semibold text-gray-400 uppercase block">
                         Status
@@ -325,7 +325,7 @@ export function FileDetailDrawer({
                       <Info size={14} className="stroke-[2.2]" /> File Metadata
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           File size
                         </span>
@@ -333,7 +333,7 @@ export function FileDetailDrawer({
                           {formatBytes(file.fileSize)}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Duration
                         </span>
@@ -341,7 +341,7 @@ export function FileDetailDrawer({
                           {formatDuration(file.metadata?.duration || 0)}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Resolution
                         </span>
@@ -349,7 +349,7 @@ export function FileDetailDrawer({
                           {file.metadata?.resolution || 'Unknown'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Frame rate
                         </span>
@@ -357,7 +357,7 @@ export function FileDetailDrawer({
                           {file.metadata?.fps ? `${file.metadata.fps} FPS` : 'Unknown'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Video codec
                         </span>
@@ -365,7 +365,7 @@ export function FileDetailDrawer({
                           {file.metadata?.codec || 'None'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-transparent/30 border border-white/20 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Audio codec
                         </span>
@@ -381,7 +381,7 @@ export function FileDetailDrawer({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <ShieldCheck size={14} className="stroke-[2.2]" /> Playability Scan
                     </h3>
-                    <div className="p-4 bg-gray-50/30 border border-gray-100 rounded-xl space-y-3">
+                    <div className="p-4 bg-transparent/30 border border-white/20 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Total frames analyzed:</span>
                         <span className="font-bold text-gray-800">
@@ -415,7 +415,7 @@ export function FileDetailDrawer({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Terminal size={14} className="stroke-[2.2]" /> Repair & Recovery Tools
                     </h3>
-                    <div className="p-4 bg-gray-50/50 border border-gray-150 rounded-2xl space-y-4">
+                    <div className="p-4 bg-transparent border border-gray-150 rounded-2xl space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="text-xs text-gray-600 font-medium leading-relaxed">
                           {file.recommendation.action}
@@ -523,7 +523,7 @@ export function FileDetailDrawer({
               {activeTab === 'player' && (
                 <div className="space-y-4">
                   {file.corruptionLevel === 'unrecoverable' ? (
-                    <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50 text-center">
+                    <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-white/30 rounded-2xl bg-transparent text-center">
                       <ShieldCheck size={36} className="text-gray-400 mb-2 stroke-[1.5]" />
                       <h4 className="text-sm font-bold text-gray-700">Video Player Offline</h4>
                       <p className="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
@@ -565,7 +565,7 @@ export function FileDetailDrawer({
                       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <Layers size={14} className="stroke-[2.2]" /> Atom Box Hierarchy
                       </h3>
-                      <div className="p-4 bg-gray-50/40 border border-gray-100 rounded-xl font-mono text-xs text-gray-600 max-h-[460px] overflow-y-auto space-y-1.5 scrollbar-thin">
+                      <div className="p-4 bg-transparent/40 border border-white/20 rounded-xl font-mono text-xs text-gray-600 max-h-[460px] overflow-y-auto space-y-1.5 scrollbar-thin">
                         {file.atomStructure.map((atomPath, index) => {
                           const parts = atomPath.split('/')
                           const indent = parts.length - 1
@@ -623,7 +623,7 @@ export function FileDetailDrawer({
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/30 flex items-center gap-3">
+            <div className="p-4 border-t border-white/20 bg-transparent/30 flex items-center gap-3">
               <button
                 onClick={() => window.api.showItemInFolder(file.filePath)}
                 className="px-4 py-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-emerald-200 transition-all flex items-center gap-1.5"
@@ -657,7 +657,7 @@ export function FileDetailDrawer({
               <div className="flex-1" />
               <button
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all"
+                className="px-4 py-2 border border-white/30 bg-white/40 hover:bg-transparent text-gray-700 font-medium rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all"
               >
                 Close Details
               </button>

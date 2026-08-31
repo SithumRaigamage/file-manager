@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { FolderOpen, Layers, Check, Trash2, ShieldAlert } from 'lucide-react';
 
 export function DuplicatesPage() {
-  const { startScan, cancelScan, progress, isScanning, groups, error, fetchGroups, resolveGroup } = useDuplicateStore();
+  const { startScan, cancelScan, progress, isScanning, groups, error, fetchGroups, resolveGroup, reset } = useDuplicateStore();
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({}); // groupId -> path to KEEP
 
   useEffect(() => {
     fetchGroups();
-  }, [fetchGroups]);
+    return () => reset();
+  }, [fetchGroups, reset]);
 
   const handleSelectFolder = async () => {
     const dir = await window.api.openDirectory();

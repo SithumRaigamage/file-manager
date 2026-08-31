@@ -45,8 +45,9 @@ declare global {
       duplicates: {
         scan(dirPath: string): Promise<IpcResponse<void>>;
         cancel(): Promise<IpcResponse<void>>;
-        getGroups(): Promise<IpcResponse<any[]>>;
-        resolve(groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<void>>;
+        getGroups: () => Promise<IpcResponse<any[]>>;
+        clear: () => Promise<IpcResponse<void>>;
+        resolve: (groupId: string, keepPath: string, deletePaths: string[]) => Promise<IpcResponse<void>>;
         onProgress(callback: (data: any) => void): () => void;
       };
       dashboard: {

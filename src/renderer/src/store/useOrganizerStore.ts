@@ -20,6 +20,7 @@ interface OrganizerState {
   applyOrganize: () => Promise<void>
   toggleWatch: (ruleSet: any) => Promise<void>
   setPreviewItems: (items: OrganizePreviewItem[]) => void
+  reset: () => void
 }
 
 export const useOrganizerStore = create<OrganizerState>((set, get) => ({
@@ -115,5 +116,15 @@ export const useOrganizerStore = create<OrganizerState>((set, get) => ({
 
   setPreviewItems: (items) => {
     set({ previewItems: items });
+  },
+
+  reset: () => {
+    set({
+      currentFolder: null,
+      files: [],
+      previewItems: [],
+      isLoading: false,
+      error: null
+    })
   }
 }))

@@ -47,8 +47,8 @@ export function ImageToolkitPage(): React.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <Link to="/toolkits" className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -83,7 +83,7 @@ export function ImageToolkitPage(): React.JSX.Element {
                   <img src={imageSrc} alt="Preview" className="max-h-64 object-contain mx-auto rounded-lg shadow-sm" />
                   <button 
                     onClick={() => setImageSrc(null)}
-                    className="absolute top-2 right-2 px-3 py-1 bg-white/80 backdrop-blur text-xs font-medium rounded shadow hover:bg-white transition-colors"
+                    className="absolute top-2 right-2 px-3 py-1 bg-white/40/80 backdrop-blur text-xs font-medium rounded shadow hover:bg-white/40 transition-colors"
                   >
                     Clear
                   </button>
@@ -113,7 +113,7 @@ export function ImageToolkitPage(): React.JSX.Element {
                 <select
                   value={targetFormat}
                   onChange={e => setTargetFormat(e.target.value as any)}
-                  className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white/40"
                 >
                   <option value="image/jpeg">JPEG</option>
                   <option value="image/png">PNG</option>

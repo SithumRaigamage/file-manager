@@ -25,7 +25,9 @@ interface ConverterState {
   setPreset: (preset: ConversionPreset) => void
   enqueueConversion: () => Promise<void>
   cancelConversion: (jobId: string) => Promise<void>
+  removeJob: (jobId: string) => void
   initProgressListener: () => void
+  reset: () => void
 }
 
 export const useConverterStore = create<ConverterState>((set, get) => {
@@ -78,6 +80,14 @@ export const useConverterStore = create<ConverterState>((set, get) => {
       }
     },
 
+    removeJob: (jobId) => {
+      set((state) => {
+        const jobs = { ...state.jobs }
+        delete jobs[jobId]
+        return { jobs }
+      })
+    },
+
     initProgressListener: () => {
       if (unsubscribeProgress) return // Already initialized
 
@@ -106,6 +116,16 @@ export const useConverterStore = create<ConverterState>((set, get) => {
             }
           }
         })
+      })
+    },
+
+    reset: () => {
+      set({
+        selectedFiles: [],
+        jobs: {},
+        preset: null,
+        isLoading: false,
+        error: null
       })
     }
   }

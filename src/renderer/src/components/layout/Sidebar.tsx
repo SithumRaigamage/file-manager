@@ -172,10 +172,13 @@ export function Sidebar(): React.ReactElement {
 
       {/* Footer */}
       <div className="p-3 border-t border-white/30 no-drag-region">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-500 hover:bg-white/40 hover:text-gray-700 cursor-pointer transition-all hover:shadow-sm hover:border hover:border-white/30 border border-transparent">
+        <NavLink 
+          to="/settings"
+          className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer border ${isActive ? 'bg-white/50 text-gray-900 shadow-sm border-white/50' : 'text-gray-500 hover:bg-white/40 hover:text-gray-700 hover:shadow-sm hover:border-white/30 border-transparent'}`}
+        >
           <Settings size={16} />
           <span className="text-xs font-semibold">Settings</span>
-        </div>
+        </NavLink>
         <p className="text-xs text-gray-400/80 text-center mt-2 font-medium">v1.0.0</p>
       </div>
     </aside>

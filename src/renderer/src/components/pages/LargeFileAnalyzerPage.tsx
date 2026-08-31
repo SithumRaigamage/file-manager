@@ -43,8 +43,8 @@ export function LargeFileAnalyzerPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50/50">
-      <div className="p-6 pb-4 border-b bg-white">
+    <div className="h-full flex flex-col bg-transparent">
+      <div className="p-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <HardDrive className="w-6 h-6 text-teal-600" />
           Large File Analyzer
