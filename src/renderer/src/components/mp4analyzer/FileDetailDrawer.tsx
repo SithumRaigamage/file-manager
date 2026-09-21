@@ -20,6 +20,7 @@ import {
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { formatBytes, formatDuration as formatDurationBase } from '../../lib/utils'
 
 interface FileDetailDrawerProps {
   file: Mp4FileResult | null
@@ -27,25 +28,8 @@ interface FileDetailDrawerProps {
   onRepairSuccess?: (newResult: Mp4FileResult) => void
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 function formatDuration(secs: number): string {
-  if (!secs || isNaN(secs)) return 'N/A'
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = Math.floor(secs % 60)
-  const mStr = m.toString().padStart(2, '0')
-  const sStr = s.toString().padStart(2, '0')
-  if (h > 0) {
-    return `${h.toString().padStart(2, '0')}:${mStr}:${sStr}`
-  }
-  return `${mStr}:${sStr}`
+  return formatDurationBase(secs, 'N/A')
 }
 
 export function FileDetailDrawer({

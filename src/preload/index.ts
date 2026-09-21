@@ -9,26 +9,6 @@ const legacyApi = {
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('shell:openPath', path),
   showItemInFolder: (path: string): void => ipcRenderer.send('shell:showItemInFolder', path),
 
-  // Organizer
-  organizer: {
-    preview: (job: unknown) => ipcRenderer.invoke('organizer:preview', job),
-    execute: (job: unknown) => ipcRenderer.invoke('organizer:execute', job),
-    scan: (dirPath: string) => ipcRenderer.invoke('organizer:scan', dirPath),
-    onProgress: (cb: (data: unknown) => void) => {
-      ipcRenderer.on('organizer:progress', (_, data) => cb(data))
-      return () => ipcRenderer.removeAllListeners('organizer:progress')
-    }
-  },
-
-  // Renamer
-  renamer: {
-    preview: (filePaths: string[], pattern: unknown) =>
-      ipcRenderer.invoke('renamer:preview', filePaths, pattern),
-    execute: (items: unknown) => ipcRenderer.invoke('renamer:execute', items),
-    undo: (items: unknown) => ipcRenderer.invoke('renamer:undo', items),
-    listFiles: (dirPath: string) => ipcRenderer.invoke('renamer:listFiles', dirPath)
-  },
-
   // Converter
   converter: {
     checkFFmpeg: () => ipcRenderer.invoke('converter:checkFFmpeg'),

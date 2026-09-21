@@ -1,4 +1,5 @@
 import path from 'path';
+import { resolveUniqueName } from '../shared/unique-path';
 
 export interface RenameStepFindReplace {
   type: 'find_replace';
@@ -66,18 +67,17 @@ export class RenameEvaluator {
       const originalName = path.basename(filePath);
 
       if (newName !== originalName) {
-        let uniqueName = newName;
-        let counter = 1;
+        const ext = path.extname(newName);
+        const base = path.basename(newName, ext);
 
         // Ensure unique within this batch
-        while (newNamesSet.has(uniqueName.toLowerCase())) {
-          const ext = path.extname(newName);
-          const base = path.basename(newName, ext);
-          uniqueName = `${base} (${counter})${ext}`;
+        const uniqueName = resolveUniqueName(base, ext, (candidate) =>
+          newNamesSet.has(candidate.toLowerCase())
+        );
+        if (uniqueName !== newName) {
           conflictMsg = 'Name collision resolved automatically.';
-          counter++;
         }
-        
+
         newName = uniqueName;
         newNamesSet.add(newName.toLowerCase());
       } else {

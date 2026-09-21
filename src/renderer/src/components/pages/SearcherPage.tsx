@@ -64,40 +64,26 @@ function formatDate(ms: number): string {
   })
 }
 
-function getFileIcon(item: SearchResult): React.ReactNode {
-  if (item.type === 'folder') return <FolderOpen size={20} className="text-amber-500" />
+function getFileIcon(item: SearchResult, size = 20): React.ReactNode {
+  if (item.type === 'folder') return <FolderOpen size={size} className="text-amber-500" />
   const ext = item.extension.replace('.', '').toLowerCase()
   if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
-    return <FileVideo size={20} className="text-rose-500" />
+    return <FileVideo size={size} className="text-rose-500" />
   if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
-    return <FileAudio size={20} className="text-purple-500" />
+    return <FileAudio size={size} className="text-purple-500" />
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext))
-    return <FileImage size={20} className="text-sky-500" />
+    return <FileImage size={size} className="text-sky-500" />
   if (['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'].includes(ext))
-    return <FileText size={20} className="text-emerald-500" />
+    return <FileText size={size} className="text-emerald-500" />
   if (['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'cpp', 'c', 'h', 'json'].includes(ext))
-    return <FileCode size={20} className="text-indigo-500" />
+    return <FileCode size={size} className="text-indigo-500" />
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext))
-    return <FileArchive size={20} className="text-orange-500" />
-  return <File size={20} className="text-gray-400" />
+    return <FileArchive size={size} className="text-orange-500" />
+  return <File size={size} className="text-gray-400" />
 }
 
 function getLargeFileIcon(item: SearchResult): React.ReactNode {
-  if (item.type === 'folder') return <FolderOpen size={40} className="text-amber-500" />
-  const ext = item.extension.replace('.', '').toLowerCase()
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
-    return <FileVideo size={40} className="text-rose-500" />
-  if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
-    return <FileAudio size={40} className="text-purple-500" />
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext))
-    return <FileImage size={40} className="text-sky-500" />
-  if (['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'].includes(ext))
-    return <FileText size={40} className="text-emerald-500" />
-  if (['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'cpp', 'c', 'h', 'json'].includes(ext))
-    return <FileCode size={40} className="text-indigo-500" />
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext))
-    return <FileArchive size={40} className="text-orange-500" />
-  return <File size={40} className="text-gray-400" />
+  return getFileIcon(item, 40)
 }
 
 // ─── View Components ──────────────────────────────────────────────────────────

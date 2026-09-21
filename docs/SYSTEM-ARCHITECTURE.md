@@ -102,6 +102,7 @@ src/
       history/           (Undo/History Service — command/event architecture, see TECH-STACK.md)
       [future: duplicates/, search/, tagging/, ai/, plugins/, cloud/ — added per phase, same pattern]
     domain/              (pure business logic, no Electron/IPC imports — testable in isolation)
+      shared/            (cross-feature domain helpers — e.g. unique-path.ts conflict resolution, directory-walker.ts — used by organizer/renamer/converter/watcher/searcher/duplicates/search instead of each reimplementing them)
     ipc/                 (preload bridge + IPC handler registration only — thin layer over domain/features)
     scheduler/           (persistent job queue — see TECH-STACK.md, supports v2.1 Scheduled Tasks)
   renderer/

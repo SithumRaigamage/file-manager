@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { RuleEvaluator, RuleSetDomain } from '../organizer/rule-evaluator';
 import { FileStabilityChecker } from '../organizer/file-stability';
+import { resolveUniquePath } from '../shared/unique-path';
 import { db } from '../../db';
 import { ruleSets } from '../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -166,16 +167,7 @@ export class WatcherService {
     }
 
     const fileName = path.basename(filePath);
-    let destPath = path.join(destFolder, fileName);
-
-    // Basic collision handling: append number
-    let counter = 1;
-    while (fs.existsSync(destPath)) {
-      const ext = path.extname(fileName);
-      const base = path.basename(fileName, ext);
-      destPath = path.join(destFolder, `${base} (${counter})${ext}`);
-      counter++;
-    }
+    const destPath = resolveUniquePath(path.join(destFolder, fileName));
 
     try {
       if (rule.action.type === 'move') {

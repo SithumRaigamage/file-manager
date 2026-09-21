@@ -3,34 +3,11 @@ import { Search, ChevronDown, ChevronUp, Eye, FileVideo2, FolderOpen, Trash2 } f
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { formatBytes, formatDuration } from '../../lib/utils'
 
 interface ResultsTableProps {
   results: Mp4FileResult[]
   onSelectFile: (file: Mp4FileResult) => void
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-function formatDuration(secs: number): string {
-  if (!secs || isNaN(secs)) return '00:00'
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = Math.floor(secs % 60)
-
-  const mStr = m.toString().padStart(2, '0')
-  const sStr = s.toString().padStart(2, '0')
-
-  if (h > 0) {
-    const hStr = h.toString().padStart(2, '0')
-    return `${hStr}:${mStr}:${sStr}`
-  }
-  return `${mStr}:${sStr}`
 }
 
 export function ResultsTable({ results, onSelectFile }: ResultsTableProps): React.JSX.Element {

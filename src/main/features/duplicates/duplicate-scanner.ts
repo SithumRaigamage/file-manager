@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Worker } from 'worker_threads';
 import { db } from '../../db';
 import { duplicateGroups } from '../../db/schema';
+import { walkDirectory } from '../../domain/shared/directory-walker';
 import crypto from 'crypto';
 
 export interface DuplicateScanProgress {
@@ -40,48 +41,35 @@ export class DuplicateScanner {
     onProgress({ phase: 'scanning', scannedCount: 0, hashedCount: 0, totalToHash: 0 });
 
     let scannedCount = 0;
-    
-    const walk = (dir: string) => {
-      if (this.killed) return;
-      
-      let items: fs.Dirent[] = [];
-      try {
-        items = fs.readdirSync(dir, { withFileTypes: true });
-      } catch (err) {
-        return; // Skip unreadable directories
-      }
 
-      for (const item of items) {
-        if (this.killed) return;
-        const fullPath = path.join(dir, item.name);
-        if (item.isDirectory()) {
-          walk(fullPath);
-        } else if (item.isFile()) {
-          scannedCount++;
-          if (scannedCount % 500 === 0) {
-            onProgress({ phase: 'scanning', scannedCount, hashedCount: 0, totalToHash: 0 });
-          }
-          
-          try {
-            const stat = fs.statSync(fullPath);
-            if (stat.size > 0) { // Ignore empty files
-              if (!this.sizeMap.has(stat.size)) {
-                this.sizeMap.set(stat.size, []);
-              }
-              this.sizeMap.get(stat.size)!.push({
-                path: fullPath,
-                lastModified: stat.mtimeMs,
-                size: stat.size
-              });
+    walkDirectory(dirPath, {
+      shouldContinue: () => !this.killed,
+      onEntry: (fullPath, item) => {
+        if (!item.isFile()) return;
+
+        scannedCount++;
+        if (scannedCount % 500 === 0) {
+          onProgress({ phase: 'scanning', scannedCount, hashedCount: 0, totalToHash: 0 });
+        }
+
+        try {
+          const stat = fs.statSync(fullPath);
+          if (stat.size > 0) { // Ignore empty files
+            if (!this.sizeMap.has(stat.size)) {
+              this.sizeMap.set(stat.size, []);
             }
-          } catch (e) {
-            // Ignore stat errors
+            this.sizeMap.get(stat.size)!.push({
+              path: fullPath,
+              lastModified: stat.mtimeMs,
+              size: stat.size
+            });
           }
+        } catch (e) {
+          // Ignore stat errors
         }
       }
-    };
+    });
 
-    walk(dirPath);
     if (this.killed) return;
 
     const filesToHash: DuplicateFile[] = [];

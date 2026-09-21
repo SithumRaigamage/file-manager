@@ -6,6 +6,7 @@ import { DiskSpaceChecker } from './disk-space-checker';
 import { ConversionPreset } from '../../../preload/index';
 import { HistoryService, BatchItem } from '../history/history-service';
 import { resolveFFprobePath } from '../../features/converter/ffmpeg-locator';
+import { resolveUniquePath } from '../shared/unique-path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -47,14 +48,7 @@ export class ConverterQueue {
       const ext = path.extname(inputPath);
       const base = path.basename(inputPath, ext);
       const dir = path.dirname(inputPath);
-      let outputPath = path.join(dir, `${base}_converted.${preset.targetContainer}`);
-
-      // Basic collision
-      let counter = 1;
-      while (fs.existsSync(outputPath)) {
-        outputPath = path.join(dir, `${base}_converted (${counter}).${preset.targetContainer}`);
-        counter++;
-      }
+      const outputPath = resolveUniquePath(path.join(dir, `${base}_converted.${preset.targetContainer}`));
 
       const jobId = crypto.randomUUID();
       const job: ConversionJob = {

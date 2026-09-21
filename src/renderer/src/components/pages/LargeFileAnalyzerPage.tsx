@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
 import { BarChart, PieChart, HardDrive } from 'lucide-react';
+import { formatBytes as formatSize } from '../../lib/utils';
 
 export function LargeFileAnalyzerPage() {
   const [largestFiles, setLargestFiles] = useState<any[]>([]);
@@ -33,14 +34,6 @@ export function LargeFileAnalyzerPage() {
     
     loadData();
   }, []);
-
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   return (
     <div className="h-full flex flex-col bg-transparent">

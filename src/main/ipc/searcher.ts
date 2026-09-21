@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import { walkDirectory } from '../domain/shared/directory-walker'
+import { resolveUniquePath } from '../domain/shared/unique-path'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +87,14 @@ const IGNORED_DIRECTORIES = new Set([
   'obj'
 ])
 
+function shouldSkipSearchDir(entry: fs.Dirent): boolean {
+  return (
+    entry.name.startsWith('$') ||
+    entry.name.startsWith('.') ||
+    IGNORED_DIRECTORIES.has(entry.name.toLowerCase())
+  )
+}
+
 function generateVariants(query: string): string[] {
   let q = query.trim().toLowerCase()
   if (q.startsWith('*')) {
@@ -101,72 +111,54 @@ function generateVariants(query: string): string[] {
   ]
 }
 
-function walkTree(
+function matchesVariants(entry: fs.Dirent, variants: string[]): boolean {
+  const nameLower = entry.name.toLowerCase()
+  const ext = path.extname(nameLower)
+  const baseNameWithoutExt = path.basename(nameLower, ext)
+
+  const isExtensionMatch = variants.some((v) => {
+    const vClean = v.trim()
+    if (vClean.startsWith('.')) {
+      return ext === vClean
+    }
+    return ext.slice(1) === vClean
+  })
+  const isFilenameMatch = variants.some((v) => baseNameWithoutExt.includes(v))
+  return isExtensionMatch || isFilenameMatch
+}
+
+function toSearchResult(
+  fullPath: string,
+  entry: fs.Dirent,
   currentPath: string,
-  rootPath: string,
-  variants: string[],
-  results: SearchResult[],
-  onProgress: (scanned: number, found: number) => void,
-  state: { scanned: number }
-): void {
+  rootPath: string
+): SearchResult | null {
   try {
-    const entries = fs.readdirSync(currentPath, { withFileTypes: true })
-    state.scanned += entries.length
+    const stats = fs.statSync(fullPath)
+    const item: SearchResult = {
+      name: entry.name,
+      fullPath,
+      type: entry.isDirectory() ? 'folder' : 'file',
+      size: stats.size,
+      extension: path.extname(entry.name),
+      modifiedAt: stats.mtimeMs,
+      depth: fullPath.split(path.sep).length - rootPath.split(path.sep).length,
+      parentPath: currentPath,
+      childCount: 0
+    }
 
-    for (const entry of entries) {
-      const fullPath = path.join(currentPath, entry.name)
-      const nameLower = entry.name.toLowerCase()
-      const ext = path.extname(nameLower)
-      const baseNameWithoutExt = path.basename(nameLower, ext)
-
-      const isExtensionMatch = variants.some((v) => {
-        const vClean = v.trim()
-        if (vClean.startsWith('.')) {
-          return ext === vClean
-        }
-        return ext.slice(1) === vClean
-      })
-      const isFilenameMatch = variants.some((v) => baseNameWithoutExt.includes(v))
-      const isMatch = isExtensionMatch || isFilenameMatch
-
-      if (isMatch) {
-        const stats = fs.statSync(fullPath)
-        const item: SearchResult = {
-          name: entry.name,
-          fullPath,
-          type: entry.isDirectory() ? 'folder' : 'file',
-          size: stats.size,
-          extension: path.extname(entry.name),
-          modifiedAt: stats.mtimeMs,
-          depth: fullPath.split(path.sep).length - rootPath.split(path.sep).length,
-          parentPath: currentPath,
-          childCount: 0
-        }
-
-        if (entry.isDirectory()) {
-          try {
-            item.childCount = fs.readdirSync(fullPath).length
-          } catch {
-            item.childCount = 0
-          }
-        }
-
-        results.push(item)
-        onProgress(state.scanned, results.length)
-      }
-
-      // Recurse if directory (and not hidden/system usually, but keeping it simple)
-      if (
-        entry.isDirectory() &&
-        !entry.name.startsWith('$') &&
-        !entry.name.startsWith('.') &&
-        !IGNORED_DIRECTORIES.has(entry.name.toLowerCase())
-      ) {
-        walkTree(fullPath, rootPath, variants, results, onProgress, state)
+    if (entry.isDirectory()) {
+      try {
+        item.childCount = fs.readdirSync(fullPath).length
+      } catch {
+        item.childCount = 0
       }
     }
+
+    return item
   } catch {
-    // Skip locked/inaccessible folders
+    // Skip entries we can no longer stat (e.g. removed mid-scan)
+    return null
   }
 }
 
@@ -177,17 +169,6 @@ function deduplicateResults(results: SearchResult[]): SearchResult[] {
     seen.add(item.fullPath)
     return true
   })
-}
-
-function getUniqueDestination(targetPath: string): string {
-  if (!fs.existsSync(targetPath)) return targetPath
-  const ext = path.extname(targetPath)
-  const base = path.join(path.dirname(targetPath), path.basename(targetPath, ext))
-  let counter = 1
-  while (fs.existsSync(`${base} (${counter})${ext}`)) {
-    counter++
-  }
-  return `${base} (${counter})${ext}`
 }
 
 function moveItem(source: string, dest: string): void {
@@ -233,16 +214,24 @@ export function registerSearcherHandlers(): void {
       if (!query.trim()) return []
 
       const variants = generateVariants(query)
-      const raw: SearchResult[] = []
+      const results: SearchResult[] = []
       const state = { scanned: 0 }
 
-      const onProgress = (scanned: number, found: number): void => {
-        event.sender.send('searcher:progress', { scanned, found })
-      }
+      walkDirectory(drivePath, {
+        shouldSkipDir: shouldSkipSearchDir,
+        onEntry: (fullPath, entry, currentPath) => {
+          state.scanned++
+          if (!matchesVariants(entry, variants)) return
 
-      walkTree(drivePath, drivePath, variants, raw, onProgress, state)
+          const item = toSearchResult(fullPath, entry, currentPath, drivePath)
+          if (item) {
+            results.push(item)
+            event.sender.send('searcher:progress', { scanned: state.scanned, found: results.length })
+          }
+        }
+      })
 
-      const deduplicated = deduplicateResults(raw)
+      const deduplicated = deduplicateResults(results)
 
       // Final progress update
       event.sender.send('searcher:progress', { scanned: state.scanned, found: deduplicated.length })
@@ -278,7 +267,7 @@ export function registerSearcherHandlers(): void {
         // Skip if item no longer exists (may have been moved as part of parent)
         if (!fs.existsSync(item.fullPath)) continue
 
-        const destPath = getUniqueDestination(path.join(newFolderPath, item.name))
+        const destPath = resolveUniquePath(path.join(newFolderPath, item.name))
 
         try {
           moveItem(item.fullPath, destPath)
@@ -335,73 +324,31 @@ export function registerSearcherHandlers(): void {
       )
 
       const state = { scanned: 0 }
-      const onProgress = (scanned: number, found: number): void => {
-        event.sender.send('searcher:progress', { scanned, found })
-      }
 
-      // Helper for batch matching within the walk
-      const walkBatch = (currentPath: string, root: string): void => {
-        try {
-          const entries = fs.readdirSync(currentPath, { withFileTypes: true })
-          state.scanned += entries.length
+      walkDirectory(drivePath, {
+        shouldSkipDir: shouldSkipSearchDir,
+        onEntry: (fullPath, entry, currentPath) => {
+          state.scanned++
+          let matchedAny = false
 
-          for (const entry of entries) {
-            const fullPath = path.join(currentPath, entry.name)
-            const nameLower = entry.name.toLowerCase()
-            const ext = path.extname(nameLower)
-            const baseNameWithoutExt = path.basename(nameLower, ext)
-            let matchedAny = false
+          for (const query of queries) {
+            const { variants, results } = keywordMap[query]
+            if (!matchesVariants(entry, variants)) continue
 
-            for (const query of queries) {
-              const { variants, results } = keywordMap[query]
-              const isExtensionMatch = variants.some((v) => {
-                const vClean = v.trim()
-                if (vClean.startsWith('.')) {
-                  return ext === vClean
-                }
-                return ext.slice(1) === vClean
-              })
-              const isFilenameMatch = variants.some((v) => baseNameWithoutExt.includes(v))
-
-              if (isExtensionMatch || isFilenameMatch) {
-                const stats = fs.statSync(fullPath)
-                results.push({
-                  name: entry.name,
-                  fullPath,
-                  type: entry.isDirectory() ? 'folder' : 'file',
-                  size: stats.size,
-                  extension: path.extname(entry.name),
-                  modifiedAt: stats.mtimeMs,
-                  depth: fullPath.split(path.sep).length - root.split(path.sep).length,
-                  parentPath: currentPath,
-                  childCount: 0
-                })
-                matchedAny = true
-                // Note: We don't 'break' here because a file might match multiple keywords
-                // but for 'move' automation, we'll handle the first match later.
-              }
-            }
-
-            if (matchedAny) {
-              onProgress(state.scanned, 0) // Found count isn't easily calculated here
-            }
-
-            // Recurse
-            if (
-              entry.isDirectory() &&
-              !entry.name.startsWith('$') &&
-              !entry.name.startsWith('.') &&
-              !IGNORED_DIRECTORIES.has(entry.name.toLowerCase())
-            ) {
-              walkBatch(fullPath, root)
+            const item = toSearchResult(fullPath, entry, currentPath, drivePath)
+            if (item) {
+              results.push(item)
+              matchedAny = true
+              // Note: we don't stop here because a file might match multiple keywords,
+              // but for 'move' automation, we'll handle the first match later.
             }
           }
-        } catch {
-          // Skip inaccessible
-        }
-      }
 
-      walkBatch(drivePath, drivePath)
+          if (matchedAny) {
+            event.sender.send('searcher:progress', { scanned: state.scanned, found: 0 })
+          }
+        }
+      })
 
       // Convert map to plain object of results
       const final: Record<string, SearchResult[]> = {}
