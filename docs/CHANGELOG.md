@@ -55,6 +55,18 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend section: state-persistence rule), this file.
 - **No new open decisions raised.**
 
+## 2026-09-27 — Keep all tool pages alive across tab switches; fix jumping scan progress bars
+
+- **Follow-up to the entry above**: removing the unmount resets only fixed store-backed state. Page-local `useState` (Advanced Search query/folder, Image Toolkit image and options, Automation's workflow builder, Storage Analytics data, MP4 results-table filters, etc.) was still discarded on every tab switch, because React Router unmounts inactive routes.
+- **Fix — keep-alive routing**: `App.tsx` now renders pages through a new `KeepAliveRoutes` outlet that mounts each page on first visit and keeps it mounted (hidden) afterwards. Pages that previously loaded data in a mount-only `useEffect` (Dashboard, History, Automation, Duplicates, Storage Analytics) now use `useTabActivated` (`renderer/src/lib/tab-activity.ts`) so they still refresh each time they are shown. Settings keeps loading once, since it saves each change immediately. Chosen over moving every page's local state into stores: it covers all current and future pages (including nested components' state and live progress subscriptions) without rewriting each one. Trade-off: visited pages stay in memory for the session — acceptable for a fixed set of ~13 pages.
+- **Bug — progress bar jumping up and down during folder scans**: root cause was two scans running concurrently and both emitting on the same progress channel. It was easy to trigger via the tab-reset bug (leave mid-scan → return to an "idle" page → scan again).
+  - `ipc/mp4analyzer.ts`: no guard existed — a new `analyzeFile`/`analyzeFolder` reset `cancelRequested` and ran alongside the old loop. Added a scan generation counter (`beginScan`): a new scan kills the previous scan's ffmpeg processes, and a superseded scan stops and emits no further progress. The renderer also ignores results from a superseded scan. Also fixed ffmpeg stderr parsing to split on `\r` as well as `\n` (ffmpeg rewrites its stats line with `\r`, so the first, stale `time=` value was being read).
+  - `ipc/duplicates.ts`: progress from a cancelled/superseded scanner is dropped; the old scan's `finally` no longer nulls out the *new* scanner reference.
+  - `features/search/search-engine.ts`: indexer workers are now stopped with `terminate()` (the `cancel` message could not interrupt the worker's synchronous directory walk, so the old worker kept emitting progress), progress is only forwarded from the current worker, and a finishing old worker no longer terminates the new one (`this.activeWorker?.terminate()` previously hit the new worker).
+- **Tests**: new e2e case "Page-local UI state should survive navigating to another tab and back". The concurrent-scan fixes have no automated test (they need real media files/timing); verified by typecheck and code review only.
+- **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend: keep-alive routing, `useTabActivated`, scan-superseding rule), this file.
+- **No new open decisions raised.**
+
 ## Template for Future Entries
 
 ```

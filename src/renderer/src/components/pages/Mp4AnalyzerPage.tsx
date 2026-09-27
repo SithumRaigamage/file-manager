@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Folder, FileSearch, XCircle, RefreshCw, BarChart, Table, FileText } from 'lucide-react'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 import { SummaryCards } from '../mp4analyzer/SummaryCards'
@@ -26,6 +26,9 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     resetStore
   } = useMp4AnalyzerStore()
 
+  // Identifies the latest scan; results from a superseded scan are dropped
+  const scanIdRef = useRef(0)
+
   // Subscribe to progress events from the main process
   useEffect(() => {
     const unsubscribe = window.api.mp4analyzer.onProgress((data) => {
@@ -42,12 +45,14 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       const filePaths = await window.api.openFiles()
       if (filePaths.length === 0) return
 
+      const scanId = ++scanIdRef.current
       resetStore()
       setScanState('scanning')
       setScannedFolder(null)
       setProgress({ scanned: 0, total: 1, currentFile: filePaths[0] })
 
       const result = await window.api.mp4analyzer.analyzeFile(filePaths[0])
+      if (scanId !== scanIdRef.current) return
       addResult(result)
       setScanState('done')
     } catch (err) {
@@ -61,12 +66,14 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       const folderPath = await window.api.openDirectory()
       if (!folderPath) return
 
+      const scanId = ++scanIdRef.current
       resetStore()
       setScanState('scanning')
       setScannedFolder(folderPath)
       setProgress({ scanned: 0, total: 1, currentFile: 'Scanning folder...' })
 
       const scanResults = await window.api.mp4analyzer.analyzeFolder(folderPath)
+      if (scanId !== scanIdRef.current) return
       setResults(scanResults)
       setScanState('done')
     } catch (err) {

@@ -18,6 +18,27 @@ const execFileAsync = promisify(execFile)
 // Track active child processes for cancellation
 const activeProcesses = new Set<ChildProcess>()
 let cancelRequested = false
+// Incremented by every new scan. A scan whose generation is no longer current
+// has been superseded: it must stop and must not emit progress, otherwise two
+// scans interleave on the shared progress channel and the bar jumps around.
+let scanGeneration = 0
+
+function killActiveProcesses(): void {
+  for (const proc of activeProcesses) {
+    try {
+      proc.kill()
+    } catch {
+      // ignore
+    }
+  }
+  activeProcesses.clear()
+}
+
+function beginScan(): number {
+  killActiveProcesses()
+  cancelRequested = false
+  return ++scanGeneration
+}
 
 import { resolveFFmpegPath, resolveFFprobePath } from '../features/converter/ffmpeg-locator'
 
@@ -273,8 +294,9 @@ function runFFmpegIntegrityCheck(
     proc.stderr.on('data', (data: Buffer) => {
       const text = data.toString()
 
-      // Look for error/warning indicators
-      const lines = text.split('\n')
+      // Look for error/warning indicators. FFmpeg rewrites its stats line in
+      // place using '\r', so split on both or the first (stale) time= wins.
+      const lines = text.split(/[\r\n]+/)
       for (const line of lines) {
         if (!line.trim()) continue
 
@@ -598,7 +620,7 @@ export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFile',
     async (event, filePath: string): Promise<Mp4FileResult> => {
-      cancelRequested = false
+      const generation = beginScan()
       const basic = checkBasicFile(filePath)
       const fileName = path.basename(filePath)
 
@@ -700,6 +722,7 @@ export function registerMp4AnalyzerHandlers(): void {
           metadata.duration,
           (p) => {
             // Stream single-file scanning progress
+            if (generation !== scanGeneration) return
             event.sender.send('mp4analyzer:progress', {
               scanned: p,
               total: 100,
@@ -760,7 +783,8 @@ export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFolder',
     async (event, folderPath: string): Promise<Mp4FileResult[]> => {
-      cancelRequested = false
+      const generation = beginScan()
+      const isCurrent = (): boolean => generation === scanGeneration
       const results: Mp4FileResult[] = []
 
       let files: string[] = []
@@ -784,7 +808,7 @@ export function registerMp4AnalyzerHandlers(): void {
       }
 
       for (let i = 0; i < total; i++) {
-        if (cancelRequested) {
+        if (cancelRequested || !isCurrent()) {
           break
         }
 
@@ -883,6 +907,7 @@ export function registerMp4AnalyzerHandlers(): void {
             metadata.duration,
             (p) => {
               // Send sub-progress for current file scan
+              if (!isCurrent()) return
               event.sender.send('mp4analyzer:progress', {
                 scanned: i + p / 100,
                 total,
@@ -943,6 +968,9 @@ export function registerMp4AnalyzerHandlers(): void {
         })
       }
 
+      // A superseded scan must not overwrite the newer scan's progress
+      if (!isCurrent()) return results
+
       // Final progress state
       event.sender.send('mp4analyzer:progress', {
         scanned: total,
@@ -956,14 +984,7 @@ export function registerMp4AnalyzerHandlers(): void {
 
   ipcMain.handle('mp4analyzer:cancel', () => {
     cancelRequested = true
-    for (const proc of activeProcesses) {
-      try {
-        proc.kill()
-      } catch {
-        // ignore
-      }
-    }
-    activeProcesses.clear()
+    killActiveProcesses()
     return true
   })
 

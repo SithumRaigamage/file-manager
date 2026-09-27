@@ -37,7 +37,10 @@
 
 React 19 SPA rendered in Electron's renderer process; no server-side rendering needed. State managed via Zustand stores per domain (organizer, renamer, converter, history).
 
-Tool state must survive navigation: stores are module-level singletons precisely so a user can leave a tool mid-task (or while a scan/conversion is still running) and come back to it intact. Pages must **not** reset their store in a `useEffect` unmount cleanup — React Router unmounts a page on every tab switch, so that pattern wipes the user's work. Reset only on an explicit user action (e.g. starting a new scan). Page-level UI state the user would expect to find again (selected folder, keep/delete selections, form inputs) belongs in the store, not in component `useState`.
+Tool state must survive navigation. Routing goes through `KeepAliveRoutes` (`renderer/src/components/layout/KeepAliveRoutes.tsx`): each page mounts on first visit and then stays mounted, hidden while inactive, so component state, in-flight async work and IPC progress subscriptions all survive tab switches. Consequences for page code:
+- Never reset a store in a `useEffect` unmount cleanup; reset only on an explicit user action (e.g. starting a new scan).
+- Data that should refresh when the user returns to a page (history, dashboard stats, analytics) must load via `useTabActivated(cb)` from `renderer/src/lib/tab-activity.ts`, not a mount-only `useEffect` — kept-alive pages don't remount.
+- Main-process scans that stream progress over a shared channel (MP4 analyzer, duplicate finder, indexer) must let a new scan supersede the previous one and must drop progress from a superseded scan; otherwise two runs interleave and the progress bar jumps back and forth.
 
 ## Authentication
 

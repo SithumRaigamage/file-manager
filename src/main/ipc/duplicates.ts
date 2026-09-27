@@ -13,10 +13,13 @@ export function registerDuplicatesHandlers(): void {
       currentScanner.cancel();
     }
     
-    currentScanner = new DuplicateScanner();
-    
+    const scanner = new DuplicateScanner();
+    currentScanner = scanner;
+
     try {
-      await currentScanner.scan(dirPath, (progress: DuplicateScanProgress) => {
+      await scanner.scan(dirPath, (progress: DuplicateScanProgress) => {
+        // A superseded scan must not interleave its progress with the new one
+        if (currentScanner !== scanner) return;
         event.sender.send('fileflow:duplicates:progress', progress);
       });
       return { ok: true };
@@ -24,7 +27,7 @@ export function registerDuplicatesHandlers(): void {
       console.error('Scan failed:', error);
       return { ok: false, error: { code: 'SCAN_FAILED', message: (error as Error).message } };
     } finally {
-      currentScanner = null;
+      if (currentScanner === scanner) currentScanner = null;
     }
   });
 

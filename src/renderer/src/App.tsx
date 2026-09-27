@@ -1,5 +1,5 @@
 import React from 'react'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
 import { OrganizerPage } from './components/pages/OrganizerPage'
 import { RenamerPage } from './components/pages/RenamerPage'
@@ -15,7 +15,26 @@ import { ToolkitsPage } from './components/pages/ToolkitsPage'
 import { ImageToolkitPage } from './components/pages/ImageToolkitPage'
 import { SettingsPage } from './components/pages/SettingsPage'
 import { CommandPalette } from './components/layout/CommandPalette'
+import { KeepAliveRoutes, KeepAliveRoute } from './components/layout/KeepAliveRoutes'
 import './assets/main.css'
+
+// Pages stay mounted after first visit (see KeepAliveRoutes) so switching tabs
+// never discards in-progress work.
+const routes: KeepAliveRoute[] = [
+  { path: '/', element: <DashboardPage /> },
+  { path: '/organizer', element: <OrganizerPage /> },
+  { path: '/automation', element: <AutomationPage /> },
+  { path: '/renamer', element: <RenamerPage /> },
+  { path: '/converter', element: <ConverterPage /> },
+  { path: '/searcher', element: <AdvancedSearchPage /> },
+  { path: '/analytics', element: <LargeFileAnalyzerPage /> },
+  { path: '/toolkits', element: <ToolkitsPage /> },
+  { path: '/toolkits/image', element: <ImageToolkitPage /> },
+  { path: '/settings', element: <SettingsPage /> },
+  { path: '/mp4-analyzer', element: <Mp4AnalyzerPage /> },
+  { path: '/history', element: <HistoryPage /> },
+  { path: '/duplicates', element: <DuplicatesPage /> }
+]
 
 export default function App(): React.JSX.Element {
   return (
@@ -30,21 +49,7 @@ export default function App(): React.JSX.Element {
         
         <Sidebar />
         <main className="flex-1 overflow-hidden flex flex-col z-0">
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/organizer" element={<OrganizerPage />} />
-            <Route path="/automation" element={<AutomationPage />} />
-            <Route path="/renamer" element={<RenamerPage />} />
-            <Route path="/converter" element={<ConverterPage />} />
-            <Route path="/searcher" element={<AdvancedSearchPage />} />
-            <Route path="/analytics" element={<LargeFileAnalyzerPage />} />
-            <Route path="/toolkits" element={<ToolkitsPage />} />
-            <Route path="/toolkits/image" element={<ImageToolkitPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/mp4-analyzer" element={<Mp4AnalyzerPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/duplicates" element={<DuplicatesPage />} />
-          </Routes>
+          <KeepAliveRoutes routes={routes} />
         </main>
       </div>
       <CommandPalette />

@@ -23,43 +23,51 @@ export class SearchEngine {
   }
 
   startIndexing(dirPath: string, onProgress: (data: any) => void): Promise<void> {
-    if (this.activeWorker) {
-      this.activeWorker.postMessage({ command: 'cancel' });
-    }
+    // Stop any previous run outright. A 'cancel' message can't interrupt the
+    // worker's synchronous directory walk, so the old worker would otherwise
+    // keep emitting progress interleaved with the new run's.
+    this.cancelIndexing();
 
     return new Promise((resolve, reject) => {
       // Must use built JS file in production, TS in dev if running via ts-node, but electron-vite builds to js
       const workerScript = path.join(__dirname, 'indexer-worker.js');
-      
-      this.activeWorker = new Worker(workerScript);
-      
-      this.activeWorker.on('message', (msg) => {
+
+      const worker = new Worker(workerScript);
+      this.activeWorker = worker;
+      const isCurrent = (): boolean => this.activeWorker === worker;
+
+      worker.on('message', (msg) => {
         if (msg.type === 'progress') {
-          onProgress({ scanned: msg.scanned, indexed: msg.indexed });
+          if (isCurrent()) onProgress({ scanned: msg.scanned, indexed: msg.indexed });
         } else if (msg.type === 'completed') {
-          this.activeWorker?.terminate();
-          this.activeWorker = null;
+          worker.terminate();
+          if (isCurrent()) this.activeWorker = null;
           resolve();
         } else if (msg.type === 'error') {
+          if (isCurrent()) this.activeWorker = null;
           reject(new Error(msg.error));
         }
       });
 
-      this.activeWorker.on('error', (err) => {
+      worker.on('error', (err) => {
+        if (isCurrent()) this.activeWorker = null;
         reject(err);
       });
 
-      this.activeWorker.postMessage({ 
-        command: 'start', 
+      // Settles the promise when the worker is terminated by cancel/supersede
+      worker.on('exit', () => resolve());
+
+      worker.postMessage({
+        command: 'start',
         dirPath,
-        dbPath: this.dbPath 
+        dbPath: this.dbPath
       });
     });
   }
 
   cancelIndexing() {
     if (this.activeWorker) {
-      this.activeWorker.postMessage({ command: 'cancel' });
+      this.activeWorker.terminate();
       this.activeWorker = null;
     }
   }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useTabActivated } from '../../lib/tab-activity';
 import { useDuplicateStore } from '../../store/useDuplicateStore';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
@@ -11,9 +11,7 @@ export function DuplicatesPage() {
     selectedFolder, setSelectedFolder, selections, setSelection
   } = useDuplicateStore();
 
-  useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
+  useTabActivated(fetchGroups);
 
   const handleSelectFolder = async () => {
     const dir = await window.api.openDirectory();

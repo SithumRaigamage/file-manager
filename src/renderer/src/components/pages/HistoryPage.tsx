@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react'
+import React from 'react'
+import { useTabActivated } from '../../lib/tab-activity'
 import { History, RotateCcw, AlertTriangle } from 'lucide-react'
 import { useHistoryStore } from '../../store/useHistoryStore'
 import { Button } from '../ui/Button'
@@ -13,9 +14,7 @@ export function HistoryPage(): React.JSX.Element {
     revertBatch
   } = useHistoryStore()
 
-  useEffect(() => {
-    fetchBatches()
-  }, [fetchBatches])
+  useTabActivated(fetchBatches)
 
   return (
     <div className="flex flex-col h-full bg-transparent">

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useTabActivated } from '../../lib/tab-activity';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
 import { BarChart, PieChart, HardDrive } from 'lucide-react';
 import { formatBytes as formatSize } from '../../lib/utils';
@@ -9,31 +10,29 @@ export function LargeFileAnalyzerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      setError(null);
-      
-      const [filesRes, statsRes] = await Promise.all([
-        window.fileflow.analytics.getLargestFiles(50),
-        window.fileflow.analytics.getStorageAnalytics()
-      ]);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    const [filesRes, statsRes] = await Promise.all([
+      window.fileflow.analytics.getLargestFiles(50),
+      window.fileflow.analytics.getStorageAnalytics()
+    ]);
 
-      if (!filesRes.ok) {
-        setError(filesRes.error.message);
-      } else {
-        setLargestFiles(filesRes.data);
-      }
+    if (!filesRes.ok) {
+      setError(filesRes.error.message);
+    } else {
+      setLargestFiles(filesRes.data);
+    }
 
-      if (statsRes.ok) {
-        setExtStats(statsRes.data.extStats);
-      }
-      
-      setIsLoading(false);
+    if (statsRes.ok) {
+      setExtStats(statsRes.data.extStats);
     }
     
-    loadData();
+    setIsLoading(false);
   }, []);
+
+  useTabActivated(loadData);
 
   return (
     <div className="h-full flex flex-col bg-transparent">

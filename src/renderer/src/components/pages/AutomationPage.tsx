@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useTabActivated } from '../../lib/tab-activity';
 import { useAutomationStore } from '../../store/useAutomationStore';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -9,9 +10,7 @@ export function AutomationPage() {
   const { workflows, isLoading, error, fetchWorkflows, triggerWorkflow } = useAutomationStore();
   const [isBuilding, setIsBuilding] = useState(false);
 
-  useEffect(() => {
-    fetchWorkflows();
-  }, [fetchWorkflows]);
+  useTabActivated(fetchWorkflows);
 
   if (isBuilding) {
     return (

@@ -153,4 +153,20 @@ test.describe('FileFlow E2E Smoke Tests', () => {
     });
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  test('Page-local UI state should survive navigating to another tab and back', async () => {
+    // Pages are kept mounted (KeepAliveRoutes), so even component useState —
+    // not just Zustand stores — must persist across tab switches.
+    await window.click('text=Advanced Search');
+    const searchInput = window.locator('input[placeholder^="Search indexed files"]');
+    await searchInput.fill('quarterly report');
+
+    await window.click('text=History');
+    await expect(window.locator('text=Operation History').first()).toBeVisible();
+    await expect(searchInput).toBeHidden();
+
+    await window.click('text=Advanced Search');
+    await expect(searchInput).toBeVisible();
+    await expect(searchInput).toHaveValue('quarterly report');
+  });
 });
