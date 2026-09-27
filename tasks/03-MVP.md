@@ -5,6 +5,7 @@ Cross-reference: `docs/FEATURE-SPECIFICATION.md` for full acceptance criteria pe
 ## Organizer (MVP)
 
 - [ ] Quick Rules: Images / Videos / Docs / Archives, zero-config.
+- [x] Quick Rule: Organize by Date — group files and folders into `YYYY-MM-DD/` subfolders by their own modified date (added 2026-09-22, see `docs/CHANGELOG.md`).
 - [ ] Preview-before-apply for all organize actions.
 - [ ] Conflict prompt (rename/skip/overwrite) on destination collision.
 - [ ] Auto Mode (folder watcher) for at least one active rule set at MVP.

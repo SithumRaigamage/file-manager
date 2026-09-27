@@ -17,6 +17,7 @@ interface OrganizerState {
 
   loadFolder: (path: string) => Promise<void>
   previewQuickRule: (ruleId: string) => Promise<void>
+  previewOrganizeByDate: () => Promise<void>
   applyOrganize: () => Promise<void>
   toggleWatch: (ruleSet: any) => Promise<void>
   setPreviewItems: (items: OrganizePreviewItem[]) => void
@@ -55,6 +56,25 @@ export const useOrganizerStore = create<OrganizerState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const res = await window.fileflow.organizer.previewQuickRule(currentFolder, ruleId)
+      if (res.ok) {
+        set({ previewItems: res.data })
+      } else {
+        set({ error: res.error.message })
+      }
+    } catch (err) {
+      set({ error: (err as Error).message })
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  previewOrganizeByDate: async () => {
+    const { currentFolder } = get()
+    if (!currentFolder) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const res = await window.fileflow.organizer.previewOrganizeByDate(currentFolder)
       if (res.ok) {
         set({ previewItems: res.data })
       } else {

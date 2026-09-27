@@ -20,6 +20,10 @@ interface DuplicateStore {
   groups: DuplicateGroup[];
   isScanning: boolean;
   error: string | null;
+  selectedFolder: string | null;
+  selections: Record<string, string>; // groupId -> path to KEEP
+  setSelectedFolder: (dirPath: string | null) => void;
+  setSelection: (groupId: string, keepPath: string) => void;
   startScan: (dirPath: string) => Promise<void>;
   cancelScan: () => Promise<void>;
   fetchGroups: () => Promise<void>;
@@ -42,6 +46,13 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
     groups: [],
     isScanning: false,
     error: null,
+    selectedFolder: null,
+    selections: {},
+
+    setSelectedFolder: (dirPath) => set({ selectedFolder: dirPath }),
+
+    setSelection: (groupId, keepPath) =>
+      set((state) => ({ selections: { ...state.selections, [groupId]: keepPath } })),
 
     startScan: async (dirPath: string) => {
       set({ isScanning: true, error: null, progress: { phase: 'scanning', scannedCount: 0, hashedCount: 0, totalToHash: 0 } });
@@ -66,9 +77,13 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
     resolveGroup: async (groupId: string, keepPath: string, deletePaths: string[]) => {
       const res = await window.fileflow.duplicates.resolve(groupId, keepPath, deletePaths);
       if (res.ok) {
-        set((state) => ({
-          groups: state.groups.filter(g => g.id !== groupId)
-        }));
+        set((state) => {
+          const { [groupId]: _resolved, ...selections } = state.selections;
+          return {
+            groups: state.groups.filter(g => g.id !== groupId),
+            selections
+          };
+        });
       }
     },
 
@@ -77,7 +92,9 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
         progress: { phase: 'idle', scannedCount: 0, hashedCount: 0, totalToHash: 0 },
         groups: [],
         isScanning: false,
-        error: null
+        error: null,
+        selectedFolder: null,
+        selections: {}
       });
       await window.fileflow.duplicates.clear();
     }

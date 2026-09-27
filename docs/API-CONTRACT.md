@@ -26,6 +26,7 @@ type IpcResponse<T> =
 
 - `listFolder(path: string) → FileEntry[]`
 - `previewQuickRule(path: string, ruleId: QuickRuleId) → OrganizePreviewItem[]`
+- `previewOrganizeByDate(path: string) → OrganizePreviewItem[]` (groups files *and* folders into `YYYY-MM-DD/` subfolders by each item's own modified date; skips folders already named as a date bucket)
 - `previewSmartRule(path: string, rule: SmartRuleDefinition) → OrganizePreviewItem[]`
 - `applyOrganize(items: OrganizePreviewItem[]) → OrganizeResult`
 - `watchFolder(path: string, ruleSet: RuleSet) → { watcherId: string }`

@@ -11,7 +11,7 @@
   id: string;
   name: string;
   type: "quick" | "smart";
-  quickRuleId?: "images" | "videos" | "docs" | "archives";
+  quickRuleId?: "images" | "videos" | "docs" | "archives" | "byDate";
   conditions?: SmartCondition[]; // for type: "smart"
   conditionLogic?: "AND" | "OR";
   action: { type: "move" | "copy"; destination: string };

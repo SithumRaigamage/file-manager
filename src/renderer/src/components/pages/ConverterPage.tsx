@@ -16,13 +16,8 @@ export function ConverterPage(): React.JSX.Element {
     setPreset,
     enqueueConversion,
     cancelConversion,
-    initProgressListener,
-    reset
+    initProgressListener
   } = useConverterStore()
-
-  useEffect(() => {
-    return () => reset()
-  }, [reset])
 
   useEffect(() => {
     initProgressListener()

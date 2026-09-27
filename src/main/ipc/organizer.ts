@@ -5,6 +5,7 @@ import { RuleEvaluator, RuleSetDomain } from '../domain/organizer/rule-evaluator
 import { ConflictDetector } from '../domain/organizer/conflict-detector'
 import { resolveUniquePath } from '../domain/shared/unique-path'
 import { HistoryService, BatchItem } from '../domain/history/history-service'
+import { dateBucketName, isDateBucketName } from '../domain/organizer/date-grouper'
 
 export function registerOrganizerHandlers(): void {
   // List folder contents with file metadata
@@ -73,6 +74,42 @@ export function registerOrganizerHandlers(): void {
                 action: 'move'
               });
             }
+          }
+        }
+      } catch (err) {
+        return { ok: false, error: { code: 'PREVIEW_ERROR', message: (err as Error).message } };
+      }
+
+      return { ok: true, data: preview };
+    } catch (err) {
+      return { ok: false, error: { code: 'PREVIEW_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  // Preview files AND folders grouped into YYYY-MM-DD subfolders by their own modified date
+  ipcMain.handle('organizer:previewOrganizeByDate', async (_, dirPath: string) => {
+    try {
+      const preview: Array<{ originalPath: string; proposedDestination: string; action: 'move' | 'copy' }> = [];
+
+      try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+          // Skip folders that are already a date bucket from a previous run,
+          // so re-running this doesn't sweep e.g. "2026-09-22/" into itself.
+          if (entry.isDirectory() && isDateBucketName(entry.name)) continue;
+          if (!entry.isFile() && !entry.isDirectory()) continue;
+
+          const fullPath = path.join(dirPath, entry.name);
+          try {
+            const stats = fs.statSync(fullPath);
+            const bucket = dateBucketName(stats.mtime);
+            preview.push({
+              originalPath: fullPath,
+              proposedDestination: path.join(dirPath, bucket, entry.name),
+              action: 'move'
+            });
+          } catch {
+            // Skip entries we can't stat
           }
         }
       } catch (err) {

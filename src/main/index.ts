@@ -2,7 +2,6 @@ import { app, shell, BrowserWindow, ipcMain, dialog, protocol, crashReporter } f
 import { join, normalize, extname } from 'path'
 import * as fs from 'fs'
 import { Readable } from 'stream'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerOrganizerHandlers } from './ipc/organizer'
 import { registerRenamerHandlers } from './ipc/renamer'
@@ -89,7 +88,7 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
@@ -98,7 +97,11 @@ function createWindow(): void {
 
 import { initializeScheduler, stopScheduler } from './scheduler'
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Dynamically import @electron-toolkit/utils after app is ready
+  // because it accesses `electron.app.isPackaged` at module load time
+  const { electronApp, optimizer, is } = await import('@electron-toolkit/utils')
+
   // Initialize crash reporter after app is ready, only if user has opted in
   // We do this here (not at module load) so the DB schema is fully initialized
   try {

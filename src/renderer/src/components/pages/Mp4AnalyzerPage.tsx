@@ -26,10 +26,6 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     resetStore
   } = useMp4AnalyzerStore()
 
-  useEffect(() => {
-    return () => resetStore()
-  }, [resetStore])
-
   // Subscribe to progress events from the main process
   useEffect(() => {
     const unsubscribe = window.api.mp4analyzer.onProgress((data) => {

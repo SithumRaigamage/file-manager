@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { FolderOpen, Play, Eye, FolderInput } from 'lucide-react'
 import { useRenamerStore } from '../../store/useRenamerStore'
 import { Button } from '../ui/Button'
@@ -16,18 +16,15 @@ export function RenamerPage(): React.JSX.Element {
     setFolder,
     setSelectedFiles,
     updatePattern,
-    applyRename,
-    reset
+    applyRename
   } = useRenamerStore()
 
-  useEffect(() => {
-    return () => reset()
-  }, [reset])
-
-  const [localPrefix, setLocalPrefix] = useState('')
-  const [localSuffix, setLocalSuffix] = useState('')
-  const [localFind, setLocalFind] = useState('')
-  const [localReplace, setLocalReplace] = useState('')
+  // Seed inputs from the persisted pattern so they match the preview after navigating back
+  const findStep = (type: string) => pattern.steps.find((s) => s.type === type)
+  const [localPrefix, setLocalPrefix] = useState(() => findStep('prefix_suffix')?.prefix ?? '')
+  const [localSuffix, setLocalSuffix] = useState(() => findStep('prefix_suffix')?.suffix ?? '')
+  const [localFind, setLocalFind] = useState(() => findStep('find_replace')?.find ?? '')
+  const [localReplace, setLocalReplace] = useState(() => findStep('find_replace')?.replace ?? '')
 
   const handleSelectDirectory = async (): Promise<void> => {
     const dir = await window.api.openDirectory()

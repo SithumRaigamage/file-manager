@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { FolderOpen, Play, Eye, FolderInput } from 'lucide-react'
 import { useOrganizerStore } from '../../store/useOrganizerStore'
 import { Button } from '../ui/Button'
@@ -15,14 +15,10 @@ export function OrganizerPage(): React.JSX.Element {
     error,
     loadFolder,
     previewQuickRule,
+    previewOrganizeByDate,
     applyOrganize,
-    toggleWatch,
-    reset
+    toggleWatch
   } = useOrganizerStore()
-
-  useEffect(() => {
-    return () => reset()
-  }, [reset])
 
   const handleSelectDirectory = async (): Promise<void> => {
     const dir = await window.api.openDirectory()
@@ -34,7 +30,8 @@ export function OrganizerPage(): React.JSX.Element {
   const handlePreviewImages = () => previewQuickRule('images')
   const handlePreviewVideos = () => previewQuickRule('videos')
   const handlePreviewDocs = () => previewQuickRule('docs')
-  
+  const handlePreviewByDate = () => previewOrganizeByDate()
+
   const handleExecute = () => applyOrganize()
 
   // Map to shared preview list format
@@ -60,8 +57,8 @@ export function OrganizerPage(): React.JSX.Element {
 
       <div className="flex-1 p-6 flex gap-6 overflow-hidden">
         {/* Left Column: Controls */}
-        <div className="w-80 flex flex-col gap-4">
-          <Card>
+        <div className="w-80 flex flex-col gap-4 overflow-y-auto">
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FolderInput size={16} className="text-blue-600" />
@@ -95,7 +92,7 @@ export function OrganizerPage(): React.JSX.Element {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle>Quick Rules</CardTitle>
               <CardDescription>Instant sorting presets</CardDescription>
@@ -110,10 +107,13 @@ export function OrganizerPage(): React.JSX.Element {
               <Button variant="outline" className="w-full justify-start" onClick={handlePreviewDocs} disabled={!currentFolder || isLoading}>
                 Sort Documents
               </Button>
+              <Button variant="outline" className="w-full justify-start" onClick={handlePreviewByDate} disabled={!currentFolder || isLoading}>
+                Organize by Date
+              </Button>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">✨ AI Features</CardTitle>
               <CardDescription>Intelligent categorization</CardDescription>
@@ -165,7 +165,7 @@ export function OrganizerPage(): React.JSX.Element {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle>Auto-Pilot</CardTitle>
               <CardDescription>Watch folder in background</CardDescription>

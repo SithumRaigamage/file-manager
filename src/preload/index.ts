@@ -141,6 +141,7 @@ const fileflowApi = {
   organizer: {
     listFolder: (path: string): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('organizer:listFolder', path),
     previewQuickRule: (path: string, ruleId: string): Promise<IpcResponse<OrganizePreviewItem[]>> => ipcRenderer.invoke('organizer:previewQuickRule', path, ruleId),
+    previewOrganizeByDate: (path: string): Promise<IpcResponse<OrganizePreviewItem[]>> => ipcRenderer.invoke('organizer:previewOrganizeByDate', path),
     previewSmartRule: (path: string, rule: SmartRuleDefinition): Promise<IpcResponse<OrganizePreviewItem[]>> => ipcRenderer.invoke('organizer:previewSmartRule', path, rule),
     applyOrganize: (items: OrganizePreviewItem[]): Promise<IpcResponse<OrganizeResult>> => ipcRenderer.invoke('organizer:applyOrganize', items),
     watchFolder: (path: string, ruleSet: RuleSet): Promise<IpcResponse<{ watcherId: string }>> => ipcRenderer.invoke('organizer:watchFolder', path, ruleSet),

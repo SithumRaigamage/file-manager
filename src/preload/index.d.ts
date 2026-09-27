@@ -19,6 +19,7 @@ declare global {
       organizer: {
         listFolder(path: string): Promise<IpcResponse<any[]>>;
         previewQuickRule(path: string, ruleId: string): Promise<IpcResponse<OrganizePreviewItem[]>>;
+        previewOrganizeByDate(path: string): Promise<IpcResponse<OrganizePreviewItem[]>>;
         previewSmartRule(path: string, rule: SmartRuleDefinition): Promise<IpcResponse<OrganizePreviewItem[]>>;
         applyOrganize(items: OrganizePreviewItem[]): Promise<IpcResponse<OrganizeResult>>;
         watchFolder(path: string, ruleSet: RuleSet): Promise<IpcResponse<{ watcherId: string }>>;

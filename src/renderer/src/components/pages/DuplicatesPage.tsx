@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDuplicateStore } from '../../store/useDuplicateStore';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { FolderOpen, Layers, Check, Trash2, ShieldAlert } from 'lucide-react';
 
 export function DuplicatesPage() {
-  const { startScan, cancelScan, progress, isScanning, groups, error, fetchGroups, resolveGroup, reset } = useDuplicateStore();
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [selections, setSelections] = useState<Record<string, string>>({}); // groupId -> path to KEEP
+  const {
+    startScan, cancelScan, progress, isScanning, groups, error, fetchGroups, resolveGroup,
+    selectedFolder, setSelectedFolder, selections, setSelection
+  } = useDuplicateStore();
 
   useEffect(() => {
     fetchGroups();
-    return () => reset();
-  }, [fetchGroups, reset]);
+  }, [fetchGroups]);
 
   const handleSelectFolder = async () => {
     const dir = await window.api.openDirectory();
@@ -42,11 +42,6 @@ export function DuplicatesPage() {
     try {
       await resolveGroup(groupId, keepPath, deletePaths);
       alert('Duplicates resolved successfully');
-      setSelections(prev => {
-        const next = { ...prev };
-        delete next[groupId];
-        return next;
-      });
     } catch (err) {
       alert(`Failed to resolve: ${(err as Error).message}`);
     }
@@ -156,13 +151,13 @@ export function DuplicatesPage() {
                     <div 
                       key={idx} 
                       className={`p-4 flex items-center gap-4 hover:bg-muted/30 transition-colors cursor-pointer ${selections[group.id] === file.path ? 'bg-primary/5' : ''}`}
-                      onClick={() => setSelections(prev => ({ ...prev, [group.id]: file.path }))}
+                      onClick={() => setSelection(group.id, file.path)}
                     >
                       <input 
                         type="checkbox"
                         className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                         checked={selections[group.id] === file.path} 
-                        onChange={() => setSelections(prev => ({ ...prev, [group.id]: file.path }))}
+                        onChange={() => setSelection(group.id, file.path)}
                       />
                       <div className="flex-1 overflow-hidden">
                         <p className="font-medium truncate" title={file.path}>
