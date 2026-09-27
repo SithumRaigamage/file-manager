@@ -78,7 +78,8 @@ export const useDuplicateStore = create<DuplicateStore>((set, get) => {
       const res = await window.fileflow.duplicates.resolve(groupId, keepPath, deletePaths);
       if (res.ok) {
         set((state) => {
-          const { [groupId]: _resolved, ...selections } = state.selections;
+          const selections = { ...state.selections };
+          delete selections[groupId];
           return {
             groups: state.groups.filter(g => g.id !== groupId),
             selections

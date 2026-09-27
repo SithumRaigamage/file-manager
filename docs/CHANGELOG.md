@@ -46,6 +46,15 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - **Pre-existing gap noted, not fixed here**: the repo has no unit test runner wired up (only Playwright e2e via `npm run test:e2e`); `rule-evaluator.ts` and other domain files have no unit tests despite `CLAUDE.md`'s stated Testing Expectations. This feature's coverage was added as an e2e smoke scenario (`tests/e2e/smoke.spec.ts`) consistent with existing precedent, not as a new unit test framework introduced as a side effect of an unrelated feature.
 - **No new open decisions raised.**
 
+## 2026-09-27 — Fix: tool state lost when switching tabs
+
+- **Bug**: doing work in a tool (e.g. an MP4 Analyzer folder scan) and switching to another tab (e.g. Duplicates) discarded all of it; the user had to redo the task.
+- **Root cause**: PR #5 (`fix/reset-tab-state`, commit `a312434`) added `useEffect(() => () => reset(), [reset])` to `Mp4AnalyzerPage`, `DuplicatesPage`, `OrganizerPage`, `RenamerPage` and `ConverterPage`. React Router unmounts a page on every route change, so each tab switch cleared that tool's global Zustand store. For Duplicates it was worse: `useDuplicateStore.reset()` also calls `duplicates.clear()` over IPC, deleting the scan results in the main process. For Converter it also dropped `jobs`, hiding the progress of conversions still running.
+- **Fix**: removed the unmount resets from all five pages (the `reset` actions remain for explicit use, e.g. MP4 Analyzer still resets when a new scan starts). Moved `DuplicatesPage`'s `selectedFolder` and keep-file `selections` from component `useState` into `useDuplicateStore` so they also persist; `resolveGroup` now clears the resolved group's selection. `RenamerPage` seeds its prefix/suffix/find/replace inputs from the persisted `pattern.steps` so the inputs match the persisted preview.
+- **Tests**: new e2e case in `tests/e2e/smoke.spec.ts` ("Tool state should survive navigating to another tab and back") — verified it fails against the pre-fix `DuplicatesPage` and passes with the fix.
+- **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend section: state-persistence rule), this file.
+- **No new open decisions raised.**
+
 ## Template for Future Entries
 
 ```

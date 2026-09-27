@@ -20,7 +20,8 @@ export function RenamerPage(): React.JSX.Element {
   } = useRenamerStore()
 
   // Seed inputs from the persisted pattern so they match the preview after navigating back
-  const findStep = (type: string) => pattern.steps.find((s) => s.type === type)
+  const findStep = (type: string): Record<string, string> | undefined =>
+    pattern.steps.find((s) => s.type === type)
   const [localPrefix, setLocalPrefix] = useState(() => findStep('prefix_suffix')?.prefix ?? '')
   const [localSuffix, setLocalSuffix] = useState(() => findStep('prefix_suffix')?.suffix ?? '')
   const [localFind, setLocalFind] = useState(() => findStep('find_replace')?.find ?? '')

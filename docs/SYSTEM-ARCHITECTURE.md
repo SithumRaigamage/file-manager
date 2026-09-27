@@ -37,6 +37,8 @@
 
 React 19 SPA rendered in Electron's renderer process; no server-side rendering needed. State managed via Zustand stores per domain (organizer, renamer, converter, history).
 
+Tool state must survive navigation: stores are module-level singletons precisely so a user can leave a tool mid-task (or while a scan/conversion is still running) and come back to it intact. Pages must **not** reset their store in a `useEffect` unmount cleanup — React Router unmounts a page on every tab switch, so that pattern wipes the user's work. Reset only on an explicit user action (e.g. starting a new scan). Page-level UI state the user would expect to find again (selected folder, keep/delete selections, form inputs) belongs in the store, not in component `useState`.
+
 ## Authentication
 
 Not applicable for MVP — FileFlow is a single-user local desktop app with no accounts. If cloud sync or license activation is added later (see RISKS.md monetization dependency), a lightweight local license-key validation would be introduced without a full auth/session system.

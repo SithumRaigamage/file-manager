@@ -118,4 +118,39 @@ test.describe('FileFlow E2E Smoke Tests', () => {
 
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  test('Tool state should survive navigating to another tab and back', async () => {
+    // Regression: pages used to reset their store on unmount, so leaving a
+    // tab wiped its results (Duplicates even cleared them in the main process).
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileflow-tab-persist-'));
+    fs.writeFileSync(path.join(dir, 'persist-dup-a.bin'), 'same-content');
+    fs.writeFileSync(path.join(dir, 'persist-dup-b.bin'), 'same-content');
+
+    await window.click('text="Duplicates"');
+    await expect(window.locator('text=Smart Duplicate Finder').first()).toBeVisible();
+
+    // Folder picker is a native dialog, so kick off the scan through the same
+    // IPC bridge; the store's progress listener fetches groups on completion.
+    await window.evaluate(async (targetDir) => {
+      await (window as any).fileflow.duplicates.scan(targetDir);
+    }, dir);
+
+    const fileRow = window.locator('p.font-medium', { hasText: 'persist-dup-a.bin' });
+    await expect(fileRow).toBeVisible({ timeout: 15000 });
+    await fileRow.click();
+    await expect(window.locator('text=KEEP')).toBeVisible();
+
+    await window.click('text=Organizer');
+    await expect(window.locator('text=Smart File Organizer').first()).toBeVisible();
+    await window.click('text="Duplicates"');
+
+    await expect(window.locator('p.font-medium', { hasText: 'persist-dup-a.bin' })).toBeVisible();
+    await expect(window.locator('p.font-medium', { hasText: 'persist-dup-b.bin' })).toBeVisible();
+    await expect(window.locator('text=KEEP')).toBeVisible();
+
+    await window.evaluate(async () => {
+      await (window as any).fileflow.duplicates.clear();
+    });
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
