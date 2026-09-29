@@ -40,7 +40,8 @@ type IpcResponse<T> =
 
 ### `fileflow.converter`
 
-- `enqueueConversion(paths: string[], preset: ConversionPreset) → { jobId: string }`
+- `listPresets() → ConversionPreset[]` — display metadata (`id`, `name`, `targetContainer`); FFmpeg args never leave the main process.
+- `enqueueConversion(paths: string[], presetId: string) → { jobId: string }` — unknown ids → `UNKNOWN_PRESET`.
 - `cancelConversion(jobId: string) → void`
 - `onProgress(callback: (event: ConversionProgressEvent) => void) → unsubscribe fn`
 
@@ -63,6 +64,14 @@ type IpcResponse<T> =
 
 - `collect({ results, destRoot, folderName }) → CollectResult` — every successful move is logged as one reversible `organize` history batch (`batchId` in the result). Items containing the destination are skipped.
 - `batchSearch({ drivePath, queries, destRoot? })` — with `destRoot`, returns a safe move plan: each item under its first matching keyword only, nothing nested in another planned item, nothing containing or inside `destRoot`. The UI shows this plan for review before any move.
+
+### `api.mp4analyzer` — repair (2026-09-29)
+
+- `runRepair(filePath, repairId: 'remux' | 'faststart' | 'reencode' | 'reencode-tolerant')` — arguments built in the main process; output is a unique `<name>_repaired.mp4` beside the input. `Mp4Recommendation.command` is display text only.
+
+### `api` — shell (2026-09-29)
+
+- `openPath(path) → IpcResponse<void>` — `OPEN_BLOCKED` for apps, installers, scripts and executables; `FILE_NOT_FOUND` if missing. `showItemInFolder(path)` is unrestricted (it never executes anything).
 
 ### `api.mp4analyzer` — delete (2026-09-29)
 
@@ -105,4 +114,4 @@ Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder`
 
 ## Error Codes (initial set — expand as needed)
 
-- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`.
+- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`, `UNKNOWN_PRESET`, `INVALID_INPUT`, `OPEN_BLOCKED`, `OPEN_FAILED`, `INVALID_PATH`.

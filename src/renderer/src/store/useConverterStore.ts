@@ -4,7 +4,6 @@ export interface ConversionPreset {
   id: string
   name: string
   targetContainer: 'mp4' | 'mkv' | 'mp3' | 'wav' | 'aac'
-  ffmpegArgs: string[]
 }
 
 export interface ConversionJobState {
@@ -52,9 +51,9 @@ export const useConverterStore = create<ConverterState>((set, get) => {
 
       set({ isLoading: true, error: null })
       try {
-        const res = await window.fileflow.converter.enqueueConversion(selectedFiles, preset)
+        const res = await window.fileflow.converter.enqueueConversion(selectedFiles, preset.id)
         if (res.ok) {
-          // The backend might return one job ID representing the batch, or per file. 
+          // The backend might return one job ID representing the batch, or per file.
           // Our implementation currently returns a batch `jobId` from `enqueue`.
           // We can track the batch or just let the progress events populate the state.
           // For now, we rely on progress events to add/update job states.

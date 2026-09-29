@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'fs'
+import path from 'path'
 
 /**
  * Appends " (n)" before the extension, incrementing n until `isTaken` returns false.
@@ -11,16 +11,16 @@ export function resolveUniqueName(
   ext: string,
   isTaken: (candidate: string) => boolean
 ): string {
-  const original = `${baseName}${ext}`;
-  if (!isTaken(original)) return original;
+  const original = `${baseName}${ext}`
+  if (!isTaken(original)) return original
 
-  let counter = 1;
-  let candidate = `${baseName} (${counter})${ext}`;
+  let counter = 1
+  let candidate = `${baseName} (${counter})${ext}`
   while (isTaken(candidate)) {
-    counter++;
-    candidate = `${baseName} (${counter})${ext}`;
+    counter++
+    candidate = `${baseName} (${counter})${ext}`
   }
-  return candidate;
+  return candidate
 }
 
 /**
@@ -28,9 +28,9 @@ export function resolveUniqueName(
  * suffixing " (1)", " (2)", ... before the extension as needed.
  */
 export function resolveUniquePath(destPath: string): string {
-  const dir = path.dirname(destPath);
-  const ext = path.extname(destPath);
-  const base = path.basename(destPath, ext);
-  const name = resolveUniqueName(base, ext, (candidate) => fs.existsSync(path.join(dir, candidate)));
-  return path.join(dir, name);
+  const dir = path.dirname(destPath)
+  const ext = path.extname(destPath)
+  const base = path.basename(destPath, ext)
+  const name = resolveUniqueName(base, ext, (candidate) => fs.existsSync(path.join(dir, candidate)))
+  return path.join(dir, name)
 }

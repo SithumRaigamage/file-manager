@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { useSearcherStore, ViewMode, SearchResult, Drive } from '../../store/searcherStore'
 import { AutomationPreview } from '../searcher/AutomationPreview'
+import { toMediaUrl } from '../../lib/media-url'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -562,7 +563,7 @@ function CollectModal({
               </button>
               <button
                 onClick={() => {
-                  window.api.openPath?.(collectResult.newFolderPath)
+                  void window.api.openPath(collectResult.newFolderPath)
                   onClose()
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl transition-colors"
@@ -644,7 +645,12 @@ export function SearcherPage(): React.ReactElement {
     if (isVideo) {
       setActivePlaybackVideo(item)
     } else {
-      window.api.openPath?.(item.fullPath)
+      void window.api
+        .openPath(item.fullPath)
+        .then((res: { ok: boolean; error?: { message: string } }) => {
+          // Apps and scripts are refused by the main process; reveal them instead
+          if (!res.ok) window.api.showItemInFolder(item.fullPath)
+        })
     }
   }, [])
 
@@ -1583,8 +1589,8 @@ export function SearcherPage(): React.ReactElement {
                         <p className="text-sm font-bold text-blue-900">How it works</p>
                         <p className="text-xs text-blue-700/80 mt-1 leading-relaxed">
                           We first scan your source folder and show every match per keyword. Nothing
-                          is moved until you review the list and confirm. Each keyword&apos;s move can be
-                          undone from the History page.
+                          is moved until you review the list and confirm. Each keyword&apos;s move
+                          can be undone from the History page.
                         </p>
                       </div>
                     </div>
@@ -1712,7 +1718,7 @@ export function SearcherPage(): React.ReactElement {
               {/* Video Player */}
               <div className="aspect-video bg-black flex items-center justify-center">
                 <video
-                  src={`media://${activePlaybackVideo.fullPath}`}
+                  src={toMediaUrl(activePlaybackVideo.fullPath)}
                   controls
                   autoPlay
                   className="w-full h-full object-contain"

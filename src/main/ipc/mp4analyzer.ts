@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { spawn, execFile, ChildProcess } from 'child_process'
 import { promisify } from 'util'
-import { Mp4FileResult, Mp4Metadata } from '../../renderer/src/types/mp4analyzer'
+import { Mp4FileResult, Mp4Metadata, RepairId } from '../../renderer/src/types/mp4analyzer'
 
 const execFileAsync = promisify(execFile)
 
@@ -48,6 +48,9 @@ import { moveToTrash, TrashResult } from '../features/shared/trash'
 import type { IpcResponse } from './ipc-response'
 import { confirmDestructive, summarizePaths } from '../features/shared/confirm-dialog'
 import { analyzeMp4File, StreamAnalyzer } from '../domain/mp4analyzer/file-analyzer'
+import { checkBasicFile } from '../domain/mp4analyzer/diagnosis'
+import { isRepairId, buildRepairArgs, repairOutputPath } from '../domain/mp4analyzer/repair'
+import { resolveUniquePath } from '../domain/shared/unique-path'
 import type { IntegrityCheckResult } from '../domain/mp4analyzer/diagnosis'
 
 async function runFFprobeAnalysis(
@@ -257,117 +260,6 @@ async function scanDirectory(dirPath: string): Promise<string[]> {
   return results
 }
 
-/**
- * Parses a command string into structured FFmpeg arguments.
- * This replaces shell-based command execution to prevent command injection.
- *
- * Expected input format: ffmpeg -i "input.mp4" [options] "output.mp4"
- * Validates paths and ensures only allowed ffmpeg flags are used.
- */
-function parseFFmpegCommand(
-  command: string,
-  originalFilePath: string,
-  ffmpegPath: string
-): { args: string[]; repairedPath: string } | null {
-  // Strip leading 'ffmpeg ' and whitespace
-  const trimmed = command.trim()
-  if (!trimmed.toLowerCase().startsWith('ffmpeg ')) {
-    console.error('[mp4analyzer] Invalid command: must start with ffmpeg')
-    return null
-  }
-
-  const remaining = trimmed.slice(7).trim()
-
-  // Parse quoted strings and individual args
-  const args: string[] = []
-  let i = 0
-
-  while (i < remaining.length) {
-    // Skip whitespace
-    while (i < remaining.length && remaining[i] === ' ') i++
-    if (i >= remaining.length) break
-
-    if (remaining[i] === '"') {
-      // Quoted argument
-      i++
-      let value = ''
-      while (i < remaining.length && remaining[i] !== '"') {
-        value += remaining[i]
-        i++
-      }
-      if (remaining[i] === '"') i++ // Skip closing quote
-      args.push(value)
-    } else if (remaining[i] === "'") {
-      // Single-quoted argument
-      i++
-      let value = ''
-      while (i < remaining.length && remaining[i] !== "'") {
-        value += remaining[i]
-        i++
-      }
-      if (remaining[i] === "'") i++ // Skip closing quote
-      args.push(value)
-    } else {
-      // Unquoted argument
-      let value = ''
-      while (i < remaining.length && remaining[i] !== ' ') {
-        value += remaining[i]
-        i++
-      }
-      args.push(value)
-    }
-  }
-
-  // Validate structure: should have -i input -options... output
-  const inputIdx = args.indexOf('-i')
-  if (inputIdx === -1 || inputIdx >= args.length - 1) {
-    console.error('[mp4analyzer] Missing -i flag or input file')
-    return null
-  }
-
-  const inputFile = args[inputIdx + 1]
-  const outputFile = args[args.length - 1]
-
-  if (!inputFile || !outputFile) {
-    console.error('[mp4analyzer] Missing input or output file')
-    return null
-  }
-
-  // Validate input path matches expected file (prevent path traversal)
-  if (!fs.existsSync(inputFile) && inputFile !== originalFilePath) {
-    // Allow original file path in case it hasn't been renamed yet
-    console.warn('[mp4analyzer] Input file does not exist:', inputFile)
-  }
-
-  // Build safe args array starting with input and output
-  // We insert the ffmpeg path as first arg and preserve all options between input and output
-  const safeArgs: string[] = []
-  let outputIdx = -1
-
-  // Copy args from -i onwards, skipping the ffmpeg binary path we already have
-  for (let j = 0; j < args.length; j++) {
-    if (j === inputIdx) {
-      // Add -i flag
-      safeArgs.push('-i')
-      // Add input file
-      safeArgs.push(inputFile)
-      // Skip past the input file arg we just consumed
-      j++
-    } else if (j >= args.length - 1 && outputIdx === -1) {
-      // This is the last arg (output file)
-      safeArgs.push(outputFile)
-    } else {
-      // All other args (flags and their values)
-      safeArgs.push(args[j])
-    }
-  }
-
-  return {
-    args: safeArgs,
-    repairedPath: outputFile
-  }
-}
-
 export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFile',
@@ -505,34 +397,29 @@ export function registerMp4AnalyzerHandlers(): void {
     return true
   })
 
+  // The renderer sends which repair to run (an allow-listed id), never a command.
+  // Input is validated here and the output path is chosen here, never overwriting.
   ipcMain.handle(
     'mp4analyzer:runRepair',
     async (
       event,
       filePath: string,
-      command: string
+      repairId: RepairId
     ): Promise<{ success: boolean; repairedPath: string; error?: string }> => {
+      if (!isRepairId(repairId)) {
+        return { success: false, repairedPath: '', error: 'Unknown repair type' }
+      }
+      const basic = typeof filePath === 'string' ? checkBasicFile(filePath) : null
+      if (!basic?.valid) {
+        return { success: false, repairedPath: '', error: basic?.errorMsg ?? 'Invalid file' }
+      }
+
       try {
         const ffmpegPath = await resolveFFmpegPath()
+        const repairedPath = resolveUniquePath(repairOutputPath(filePath))
+        const args = buildRepairArgs(repairId, filePath, repairedPath)
 
-        // Parse the command string into safe, structured arguments
-        // Expected format: ffmpeg -i "input" [options] "output"
-        // We validate and sanitize each component to prevent shell injection
-        const parsedArgs = parseFFmpegCommand(command, filePath, ffmpegPath)
-
-        if (!parsedArgs) {
-          return {
-            success: false,
-            repairedPath: filePath,
-            error: 'Invalid repair command'
-          }
-        }
-
-        const { args, repairedPath } = parsedArgs
-
-        return new Promise((resolve) => {
-          // Use spawn without shell to prevent command injection
-          // Args are passed as array, never as a shell string
+        return await new Promise((resolve) => {
           const proc = spawn(ffmpegPath, args)
           activeProcesses.add(proc)
 
@@ -540,13 +427,8 @@ export function registerMp4AnalyzerHandlers(): void {
           proc.stderr.on('data', (data: Buffer) => {
             const text = data.toString()
             stderr += text
-
-            const timeMatch = text.match(/time=(\s*\d+:\d+:\d+\.\d+|\s*\d+:\d+:\d+)/)
-            if (timeMatch) {
-              event.sender.send('mp4analyzer:repairProgress', {
-                filePath,
-                progress: 50
-              })
+            if (/time=\s*\d+:\d+:\d+/.test(text)) {
+              event.sender.send('mp4analyzer:repairProgress', { filePath, progress: 50 })
             }
           })
 
@@ -566,7 +448,7 @@ export function registerMp4AnalyzerHandlers(): void {
           })
         })
       } catch (err) {
-        return { success: false, repairedPath: filePath, error: (err as Error).message }
+        return { success: false, repairedPath: '', error: (err as Error).message }
       }
     }
   )

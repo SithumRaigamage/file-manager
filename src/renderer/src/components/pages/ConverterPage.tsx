@@ -26,8 +26,7 @@ export function ConverterPage(): React.JSX.Element {
       setPreset({
         id: 'web-balanced',
         name: 'Web (Balanced MP4)',
-        targetContainer: 'mp4',
-        ffmpegArgs: ['-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '192k']
+        targetContainer: 'mp4'
       })
     }
   }, [initProgressListener, preset, setPreset])
@@ -40,7 +39,9 @@ export function ConverterPage(): React.JSX.Element {
       const res = await window.fileflow.organizer.listFolder(dir)
       if (res.ok && res.data) {
         // filter media files
-        const media = res.data.filter((f: any) => ['.mp4', '.mkv', '.avi', '.mov'].includes(f.ext.toLowerCase()))
+        const media = res.data.filter((f: any) =>
+          ['.mp4', '.mkv', '.avi', '.mov'].includes(f.ext.toLowerCase())
+        )
         setSelectedFiles(media.map((f: any) => f.path))
       }
     }
@@ -52,11 +53,11 @@ export function ConverterPage(): React.JSX.Element {
   // Map to shared preview list format
   // We show queued items (selectedFiles) that aren't yet jobs, and active jobs.
   const mappedPreviewItems: PreviewListItem[] = []
-  
+
   // Pending selected
   selectedFiles.forEach((file, idx) => {
     // If it's not already in jobs
-    const isJob = jobList.find(j => j.inputPath === file)
+    const isJob = jobList.find((j) => j.inputPath === file)
     if (!isJob) {
       mappedPreviewItems.push({
         id: `pending-${idx}`,
@@ -133,30 +134,42 @@ export function ConverterPage(): React.JSX.Element {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button 
-                variant={preset?.id === 'web-balanced' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'web-balanced' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'web-balanced', name: 'Web (Balanced MP4)', targetContainer: 'mp4', ffmpegArgs: ['-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '192k']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'web-balanced',
+                    name: 'Web (Balanced MP4)',
+                    targetContainer: 'mp4'
+                  })
+                }
               >
                 Web Balanced (MP4)
               </Button>
-              <Button 
-                variant={preset?.id === 'archive-h265' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'archive-h265' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'archive-h265', name: 'Archive (H.265 MKV)', targetContainer: 'mkv', ffmpegArgs: ['-c:v', 'libx265', '-crf', '28', '-preset', 'slow', '-c:a', 'copy']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'archive-h265',
+                    name: 'Archive (H.265 MKV)',
+                    targetContainer: 'mkv'
+                  })
+                }
               >
                 Archive (H.265 MKV)
               </Button>
-              <Button 
-                variant={preset?.id === 'audio-mp3' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'audio-mp3' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'audio-mp3', name: 'Audio Only (MP3)', targetContainer: 'mp3', ffmpegArgs: ['-vn', '-c:a', 'libmp3lame', '-b:a', '192k']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'audio-mp3',
+                    name: 'Audio Only (MP3)',
+                    targetContainer: 'mp3'
+                  })
+                }
               >
                 Extract Audio (MP3)
               </Button>
@@ -172,19 +185,30 @@ export function ConverterPage(): React.JSX.Element {
               Conversion Queue
             </h3>
             <div className="flex gap-2">
-              <Button variant="destructive" size="sm" onClick={() => {
-                jobList.filter(j => j.status === 'processing' || j.status === 'pending').forEach(j => cancelConversion(j.id))
-              }} disabled={jobList.length === 0}>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  jobList
+                    .filter((j) => j.status === 'processing' || j.status === 'pending')
+                    .forEach((j) => cancelConversion(j.id))
+                }}
+                disabled={jobList.length === 0}
+              >
                 <XCircle size={14} className="mr-2" />
                 Cancel All
               </Button>
-              <Button size="sm" onClick={() => enqueueConversion()} disabled={selectedFiles.length === 0 || isLoading}>
+              <Button
+                size="sm"
+                onClick={() => enqueueConversion()}
+                disabled={selectedFiles.length === 0 || isLoading}
+              >
                 <Play size={14} className="mr-2" />
                 Start Conversion
               </Button>
             </div>
           </div>
-          
+
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
               <div className="absolute inset-0 bg-white/40/80 z-10 flex items-center justify-center">
@@ -194,7 +218,7 @@ export function ConverterPage(): React.JSX.Element {
                 </div>
               </div>
             )}
-            
+
             <FilePreviewList items={mappedPreviewItems} />
           </div>
         </div>

@@ -143,7 +143,7 @@ test.describe('FileFlow E2E Smoke Tests', () => {
     const fileRow = window.locator('p.font-medium', { hasText: 'persist-dup-a.bin' });
     await expect(fileRow).toBeVisible({ timeout: 15000 });
     await fileRow.click();
-    await expect(window.locator('text=KEEP')).toBeVisible();
+    await expect(window.locator('text="KEEP"')).toBeVisible();
 
     await window.click('text=Organizer');
     await expect(window.locator('text=Smart File Organizer').first()).toBeVisible();
@@ -151,7 +151,7 @@ test.describe('FileFlow E2E Smoke Tests', () => {
 
     await expect(window.locator('p.font-medium', { hasText: 'persist-dup-a.bin' })).toBeVisible();
     await expect(window.locator('p.font-medium', { hasText: 'persist-dup-b.bin' })).toBeVisible();
-    await expect(window.locator('text=KEEP')).toBeVisible();
+    await expect(window.locator('text="KEEP"')).toBeVisible();
 
     await window.evaluate(async () => {
       await (window as any).fileflow.duplicates.clear();

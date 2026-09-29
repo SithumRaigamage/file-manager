@@ -80,6 +80,12 @@ Desktop crash reporting (e.g., Electron's built-in crashReporter) — opt-in, su
 - Context-isolated IPC bridge (contextIsolation: true, nodeIntegration: false in renderer) — no direct Node.js access from untrusted renderer code.
 - All file-system and FFmpeg operations happen only in the main process, invoked via a narrow, explicit preload API surface (see API-CONTRACT.md for the IPC contract).
 - Input validation on all IPC payloads (file paths, rule definitions) before they reach file-system or child-process calls, to prevent path traversal or command injection into FFmpeg args.
+- Renderer runs with `sandbox: true`; the preload exposes only the typed `api` / `fileflow` objects (no generic `ipcRenderer`, no `process`). The window never navigates away from the bundled app, and `window.open` hands only `http(s)` URLs to the system browser.
+- FFmpeg arguments exist only in main-process allow-lists (`domain/converter/presets.ts`, `domain/mp4analyzer/repair.ts`). The renderer sends a preset or repair **id**; FFmpeg runs with `-n` (never overwrite) and a main-chosen unique output path.
+- `media://local/<encoded path>` streams only regular files whose real path (symlinks resolved) has an allow-listed audio/video type; no `bypassCSP`/CORS privileges.
+- `shell:openPath` refuses applications, installers, scripts, shortcuts and executable files (`domain/shared/open-policy.ts`); revealing in Finder/Explorer is always allowed.
+- Crash reports upload only to an HTTPS endpoint set via `FILEFLOW_CRASH_REPORT_URL`; otherwise dumps stay local.
+- Regression coverage: `tests/security.spec.ts` (launches the built app) — re-run whenever preload/IPC code changes.
 
 ## Scalability (Desktop Context)
 

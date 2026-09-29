@@ -110,3 +110,16 @@ Source: the "FileFlow Code Audit" doc (2026-09-29). Fixes the six paths that cou
 - **C6**: undo (`domain/history/revert.ts`) never overwrites a file that now occupies the original location, and failed items stay in the batch for retry instead of the batch being deleted; `revertBatch`/`undoRename` return a `RevertSummary` the History page surfaces.
 - Shared `IpcResponse<T>` type moved to `src/main/ipc/ipc-response.ts` (preload re-exports it). Added `npm run test:unit`; tests: `tests/unit/data-safety.spec.ts`.
 - Docs: `API-CONTRACT.md` gained the destructive-action rules and the changed signatures.
+
+## 2026-09-29 — Audit Phase 2: security hardening (S1–S7)
+
+- **S1 `media://`**: handler moved to `features/media/media-protocol.ts`. Serves only regular files whose symlink-resolved path has an allow-listed media type (`domain/shared/media-request.ts`); `bypassCSP`/`corsEnabled` removed and CSP gained `media-src 'self' media:`. URLs are now `media://local/<encodeURIComponent(path)>` (`renderer/src/lib/media-url.ts`), which also retires the lower-cased `/users/` host hack. Range parsing is RFC-correct (suffix ranges, 416) — this also resolves audit item **B9**.
+- **S2**: preload no longer exposes `@electron-toolkit/preload`'s `electronAPI` (raw `ipcRenderer` + `process`); dependency removed, unused `Versions.tsx` deleted, non-isolated `window.*` fallback removed.
+- **S3**: MP4 repair takes an allow-listed `RepairId`; `domain/mp4analyzer/repair.ts` builds the argv (with `-n`) and the display command. `parseFFmpegCommand` deleted.
+- **S4**: converter presets live in `domain/converter/presets.ts`; `enqueueConversion(paths, presetId)`; FFmpeg `-y` replaced by `-n`. The unused legacy `converter:convert` handler and `window.api.converter` were removed — this also resolves audit item **B6** (silent overwrite + `../` in output names).
+- **S5**: `shell:openPath` (now in `ipc/shell.ts`) refuses launchable/executable targets (`domain/shared/open-policy.ts`); the Searcher falls back to "reveal in folder". `setWindowOpenHandler` opens only `http(s)` URLs.
+- **S6**: `sandbox: true` and a `will-navigate` guard.
+- **S7**: crash reports upload only to `FILEFLOW_CRASH_REPORT_URL` (HTTPS); the `example.com` endpoint is gone.
+- **B1 resolved as a side effect**: both typecheck errors disappeared (`is` unused import removed, `parseFFmpegCommand` deleted), so `npm run build` works again.
+- Tests: `tests/unit/security-policy.spec.ts`; `tests/security.spec.ts` extended (no generic bridge; `media://` serves media and refuses other files incl. a disguised symlink, via `net.fetch` in main; `openPath` blocks scripts). Smoke test locator made exact after the Phase 1 "Keep" relabel.
+- Known follow-up: `src/preload/index.ts` still has `any`-typed payloads; typed in Phase 3 with the listener fix (B2).

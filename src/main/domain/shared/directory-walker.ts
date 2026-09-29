@@ -1,13 +1,13 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'fs'
+import path from 'path'
 
 export interface WalkOptions {
   /** Called for every entry (file or directory) encountered. */
-  onEntry: (fullPath: string, entry: fs.Dirent, currentPath: string) => void;
+  onEntry: (fullPath: string, entry: fs.Dirent, currentPath: string) => void
   /** Return true to skip descending into a directory entry. */
-  shouldSkipDir?: (entry: fs.Dirent, fullPath: string) => boolean;
+  shouldSkipDir?: (entry: fs.Dirent, fullPath: string) => boolean
   /** Return false to abort the walk early (e.g. user cancellation). Checked before reading each directory and before processing each entry. */
-  shouldContinue?: () => boolean;
+  shouldContinue?: () => boolean
 }
 
 /**
@@ -16,29 +16,29 @@ export interface WalkOptions {
  * (permission errors, locked folders, etc).
  */
 export function walkDirectory(rootPath: string, options: WalkOptions): void {
-  const { onEntry, shouldSkipDir, shouldContinue } = options;
+  const { onEntry, shouldSkipDir, shouldContinue } = options
 
   function walk(currentPath: string): void {
-    if (shouldContinue && !shouldContinue()) return;
+    if (shouldContinue && !shouldContinue()) return
 
-    let entries: fs.Dirent[];
+    let entries: fs.Dirent[]
     try {
-      entries = fs.readdirSync(currentPath, { withFileTypes: true });
+      entries = fs.readdirSync(currentPath, { withFileTypes: true })
     } catch {
-      return;
+      return
     }
 
     for (const entry of entries) {
-      if (shouldContinue && !shouldContinue()) return;
+      if (shouldContinue && !shouldContinue()) return
 
-      const fullPath = path.join(currentPath, entry.name);
-      onEntry(fullPath, entry, currentPath);
+      const fullPath = path.join(currentPath, entry.name)
+      onEntry(fullPath, entry, currentPath)
 
       if (entry.isDirectory() && !(shouldSkipDir && shouldSkipDir(entry, fullPath))) {
-        walk(fullPath);
+        walk(fullPath)
       }
     }
   }
 
-  walk(rootPath);
+  walk(rootPath)
 }

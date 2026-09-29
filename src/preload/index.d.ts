@@ -33,7 +33,8 @@ declare global {
         undoRename(batchId: string): Promise<IpcResponse<RevertSummary>>;
       };
       converter: {
-        enqueueConversion(paths: string[], preset: ConversionPreset): Promise<IpcResponse<{ jobId: string }>>;
+        listPresets(): Promise<IpcResponse<ConversionPreset[]>>;
+        enqueueConversion(paths: string[], presetId: string): Promise<IpcResponse<{ jobId: string }>>;
         cancelConversion(jobId: string): Promise<IpcResponse<void>>;
         onProgress(callback: (event: ConversionProgressEvent) => void): () => void;
       };
@@ -86,6 +87,5 @@ declare global {
       };
     };
     api: any;
-    electron: any;
   }
 }

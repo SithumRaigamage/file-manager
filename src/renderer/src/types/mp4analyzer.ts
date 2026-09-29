@@ -16,9 +16,15 @@ export interface Mp4PlaybackVerification {
   healthScore: number
 }
 
+/** Allow-listed repair strategies; arguments are built in the main process. */
+export type RepairId = 'remux' | 'faststart' | 'reencode' | 'reencode-tolerant'
+
 export interface Mp4Recommendation {
   action: string
   confidence: 'high' | 'medium' | 'low'
+  /** Which repair to run — the only thing the renderer sends back. */
+  repairId?: RepairId
+  /** Display/copy text for the equivalent command line. Never executed. */
   command?: string
 }
 

@@ -3,9 +3,11 @@ import * as path from 'path'
 import type {
   CorruptionLevel,
   Mp4PlaybackVerification,
-  Mp4Recommendation
+  Mp4Recommendation,
+  RepairId
 } from '../../../renderer/src/types/mp4analyzer'
 import type { ContainerValidation } from './atom-parser'
+import { repairOutputPath, formatRepairCommand } from './repair'
 
 export interface BasicFileCheck {
   valid: boolean
@@ -90,9 +92,11 @@ export function getRecommendation(
     return { action: 'No repair needed. File is fully functional.', confidence: 'high' }
   }
 
-  const baseName = path.basename(filePath, path.extname(filePath))
-  const dirName = path.dirname(filePath)
-  const repairedPath = path.join(dirName, `${baseName}_repaired.mp4`)
+  const repairedPath = repairOutputPath(filePath)
+  const withRepair = (repairId: RepairId): Pick<Mp4Recommendation, 'repairId' | 'command'> => ({
+    repairId,
+    command: formatRepairCommand(repairId, filePath, repairedPath)
+  })
 
   if (containerVal === 'corrupted' && !atoms.includes('moov')) {
     // Without moov FFmpeg cannot demux the file at all ("Invalid data found when
@@ -109,7 +113,7 @@ export function getRecommendation(
       action:
         'Rebuild container. Some essential atoms are damaged. Try using FFmpeg to copy streams, which sometimes re-generates the container headers.',
       confidence: 'low',
-      command: `ffmpeg -i "${filePath}" -c copy -map 0 "${repairedPath}"`
+      ...withRepair('remux')
     }
   }
 
@@ -118,7 +122,7 @@ export function getRecommendation(
       action:
         'Fast-start optimize. Move the MOOV atom to the beginning of the file for web optimization.',
       confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c copy -movflags +faststart "${repairedPath}"`
+      ...withRepair('faststart')
     }
   }
 
@@ -127,7 +131,7 @@ export function getRecommendation(
       action:
         'Re-encode video stream. Minor stream corruption detected. Re-encoding will clean up broken reference frames.',
       confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c:v libx264 -crf 23 -preset medium -c:a aac "${repairedPath}"`
+      ...withRepair('reencode')
     }
   }
 
@@ -136,6 +140,6 @@ export function getRecommendation(
     action:
       'Full stream rebuild. Severe frame corruption detected. Try forcing keyframe recovery or re-encoding with stream copying.',
     confidence: 'low',
-    command: `ffmpeg -err_detect ignore_err -i "${filePath}" -c:v libx264 -crf 28 -preset fast "${repairedPath}"`
+    ...withRepair('reencode-tolerant')
   }
 }

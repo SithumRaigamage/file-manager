@@ -21,6 +21,7 @@ import {
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { toMediaUrl } from '../../lib/media-url'
 import { formatBytes, formatDuration as formatDurationBase } from '../../lib/utils'
 import { getHealthScore } from '../../lib/mp4-health'
 
@@ -85,13 +86,16 @@ export function FileDetailDrawer({
 
   const handleRunRepair = async (): Promise<void> => {
     if (file?.missingOnDisk) return
-    if (!file || !file.recommendation.command) return
+    if (!file || !file.recommendation.repairId) return
     setRepairStatus('repairing')
     setRepairProgress(10)
     setRepairError(null)
 
     try {
-      const res = await window.api.mp4analyzer.runRepair(file.filePath, file.recommendation.command)
+      const res = await window.api.mp4analyzer.runRepair(
+        file.filePath,
+        file.recommendation.repairId
+      )
       if (res.success) {
         setRepairStatus('success')
         setRepairProgress(100)
@@ -441,15 +445,17 @@ export function FileDetailDrawer({
 
                           {/* Action Executor Runner */}
                           <div className="pt-1">
-                            {repairStatus === 'idle' && !file.missingOnDisk && (
-                              <button
-                                onClick={handleRunRepair}
-                                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
-                              >
-                                <Hammer size={14} />
-                                Run Repair Automatically
-                              </button>
-                            )}
+                            {repairStatus === 'idle' &&
+                              !file.missingOnDisk &&
+                              file.recommendation.repairId && (
+                                <button
+                                  onClick={handleRunRepair}
+                                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
+                                >
+                                  <Hammer size={14} />
+                                  Run Repair Automatically
+                                </button>
+                              )}
 
                             {repairStatus === 'repairing' && (
                               <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-3 space-y-2">
@@ -529,7 +535,7 @@ export function FileDetailDrawer({
                       <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-900">
                         {/* Play custom media protocol */}
                         <video
-                          src={`media://${file.filePath}`}
+                          src={toMediaUrl(file.filePath)}
                           controls
                           className="w-full h-full object-contain"
                           preload="metadata"
