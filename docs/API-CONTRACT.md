@@ -26,6 +26,7 @@ type IpcResponse<T> =
 
 - `listFolder(path: string) → FileEntry[]`
 - `previewQuickRule(path: string, ruleId: QuickRuleId) → OrganizePreviewItem[]`
+- `previewOrganizeByDate(path: string) → OrganizePreviewItem[]` (groups files *and* folders into `YYYY-MM-DD/` subfolders by each item's own modified date; skips folders already named as a date bucket)
 - `previewSmartRule(path: string, rule: SmartRuleDefinition) → OrganizePreviewItem[]`
 - `applyOrganize(items: OrganizePreviewItem[]) → OrganizeResult`
 - `watchFolder(path: string, ruleSet: RuleSet) → { watcherId: string }`
@@ -35,18 +36,65 @@ type IpcResponse<T> =
 
 - `previewRename(paths: string[], pattern: RenamePattern) → RenamePreviewItem[]` (includes conflict flags)
 - `applyRename(items: RenamePreviewItem[]) → RenameResult`
-- `undoRename(batchId: string) → void`
+- `undoRename(batchId: string) → RevertSummary` (same semantics as `history.revertBatch`)
 
 ### `fileflow.converter`
 
-- `enqueueConversion(paths: string[], preset: ConversionPreset) → { jobId: string }`
+- `listPresets() → ConversionPreset[]` — display metadata (`id`, `name`, `targetContainer`); FFmpeg args never leave the main process.
+- `enqueueConversion(paths: string[], presetId: string) → { jobId: string }` — unknown ids → `UNKNOWN_PRESET`.
 - `cancelConversion(jobId: string) → void`
 - `onProgress(callback: (event: ConversionProgressEvent) => void) → unsubscribe fn`
 
 ### `fileflow.history`
 
 - `listBatches(filter?: HistoryFilter) → BatchRecord[]`
-- `revertBatch(batchId: string) → void`
+- `revertBatch(batchId: string) → RevertSummary` — `{ reverted: number; failed: Array<{ path; reason }> }`. Never overwrites: an item whose original location is now occupied, or whose moved file is gone, is reported in `failed` and **stays in the batch** so it can be retried; the batch is removed only when every item was reverted.
+
+### Destructive actions — shared rules (2026-09-29)
+
+- Every delete moves items to the OS Trash (`shell.trashItem`) — never `unlink`/`rm`. Folders are never deleted as a side effect of removing a file.
+- The **main process** shows the confirmation (Cancel is the default and the Escape action), so the renderer cannot skip it. A cancelled confirmation resolves `{ ok: true, data: { trashed: [], failed: [] } }`.
+- `TrashResult = { trashed: string[]; failed: Array<{ path; reason }> }`.
+
+### `fileflow.duplicates` — resolve (post-MVP)
+
+- `resolve(groupId, keepPath, deletePaths) → IpcResponse<TrashResult>` — validated against the stored group: `keepPath` must be in the group and still exist; `deletePaths` must be group members and exclude `keepPath` (`INVALID_RESOLUTION` otherwise, `GROUP_NOT_FOUND` if the group is gone).
+
+### `api.searcher` — collect / automation (post-MVP)
+
+- `collect({ results, destRoot, folderName }) → CollectResult` — every successful move is logged as one reversible `organize` history batch (`batchId` in the result). Items containing the destination are skipped.
+- `batchSearch({ drivePath, queries, destRoot? })` — with `destRoot`, returns a safe move plan: each item under its first matching keyword only, nothing nested in another planned item, nothing containing or inside `destRoot`. The UI shows this plan for review before any move.
+
+### `api.mp4analyzer` — folder scan
+
+- `analyzeFolder(path)` skips subfolders it can't read and emits `mp4analyzer:skippedFolders` (`string[]`, subscribe with `onSkippedFolders`); it rejects only when the chosen folder itself is unreadable, with a user-facing message.
+
+### `api.mp4analyzer` — repair (2026-09-29)
+
+- `runRepair(filePath, repairId: 'remux' | 'faststart' | 'reencode' | 'reencode-tolerant')` — arguments built in the main process; output is a unique `<name>_repaired.mp4` beside the input. `Mp4Recommendation.command` is display text only.
+
+### `api` — shell (2026-09-29)
+
+- `openPath(path) → IpcResponse<void>` — `OPEN_BLOCKED` for apps, installers, scripts and executables; `FILE_NOT_FOUND` if missing. `showItemInFolder(path)` is unrestricted (it never executes anything).
+
+### `api.mp4analyzer` — delete (2026-09-29)
+
+- `deleteFile(filePath)` / `deleteMultipleFiles(filePaths) → IpcResponse<TrashResult>` — files only, to the Trash, after a main-process confirmation. (The former "delete containing folder" option and the `scannedFolder` parameter were removed.)
+
+### Event subscriptions (2026-09-29)
+
+- Every `on*` subscription returns an unsubscribe function that removes **only that listener**; other subscribers on the same channel are unaffected.
+
+### `fileflow.settings` (2026-09-29)
+
+- `update(patch)` accepts only `ffmpegPath` (string ≤ 4096 chars or null), `defaultDestructiveBehavior` (`prompt` | `always-copy`), `reducedMotion` / `telemetryOptIn` / `crashReportingOptIn` (boolean), `historyRetentionDays` (integer 1–3650), `mp4HistoryLimit` (integer 0–1000). Anything else → `INVALID_SETTINGS`; `id` is never writable.
+
+### `api.mp4analyzer` — scan history (post-MVP, added 2026-09-27)
+
+Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder` actions (completed or cancelled; superseded scans are not saved).
+
+- `listScans() → IpcResponse<Mp4ScanSummary[]>` — newest first; summary columns only, no per-file results.
+- `getScan(id: string) → IpcResponse<Mp4ScanRecord>` — full saved results, each with `missingOnDisk` computed at call time. `SCAN_NOT_FOUND` if the scan was pruned.
 
 ## Endpoints Detail — Example: `applyRename`
 
@@ -78,4 +126,4 @@ type IpcResponse<T> =
 
 ## Error Codes (initial set — expand as needed)
 
-- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`.
+- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`, `UNKNOWN_PRESET`, `INVALID_INPUT`, `OPEN_BLOCKED`, `OPEN_FAILED`, `INVALID_PATH`, `INVALID_SETTINGS`, `SETTINGS_GET_FAILED`, `SETTINGS_UPDATE_FAILED`.

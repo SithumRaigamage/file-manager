@@ -38,13 +38,15 @@ import {
   PlayCircle
 } from 'lucide-react'
 import { useSearcherStore, ViewMode, SearchResult, Drive } from '../../store/searcherStore'
+import { AutomationPreview } from '../searcher/AutomationPreview'
+import { toMediaUrl } from '../../lib/media-url'
+import { useProgressiveList } from '../../lib/use-progressive-list'
+import { basename, dirname, pathDepth } from '../../lib/paths'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getBasename(fullPath: string | null): string {
-  if (!fullPath) return ''
-  const parts = fullPath.split(/[/\\]/)
-  return parts[parts.length - 1] || fullPath
+  return fullPath ? basename(fullPath) : ''
 }
 
 function formatBytes(bytes: number): string {
@@ -64,40 +66,26 @@ function formatDate(ms: number): string {
   })
 }
 
-function getFileIcon(item: SearchResult): React.ReactNode {
-  if (item.type === 'folder') return <FolderOpen size={20} className="text-amber-500" />
+function getFileIcon(item: SearchResult, size = 20): React.ReactNode {
+  if (item.type === 'folder') return <FolderOpen size={size} className="text-amber-500" />
   const ext = item.extension.replace('.', '').toLowerCase()
   if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
-    return <FileVideo size={20} className="text-rose-500" />
+    return <FileVideo size={size} className="text-rose-500" />
   if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
-    return <FileAudio size={20} className="text-purple-500" />
+    return <FileAudio size={size} className="text-purple-500" />
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext))
-    return <FileImage size={20} className="text-sky-500" />
+    return <FileImage size={size} className="text-sky-500" />
   if (['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'].includes(ext))
-    return <FileText size={20} className="text-emerald-500" />
+    return <FileText size={size} className="text-emerald-500" />
   if (['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'cpp', 'c', 'h', 'json'].includes(ext))
-    return <FileCode size={20} className="text-indigo-500" />
+    return <FileCode size={size} className="text-indigo-500" />
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext))
-    return <FileArchive size={20} className="text-orange-500" />
-  return <File size={20} className="text-gray-400" />
+    return <FileArchive size={size} className="text-orange-500" />
+  return <File size={size} className="text-gray-400" />
 }
 
 function getLargeFileIcon(item: SearchResult): React.ReactNode {
-  if (item.type === 'folder') return <FolderOpen size={40} className="text-amber-500" />
-  const ext = item.extension.replace('.', '').toLowerCase()
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'vid'].includes(ext))
-    return <FileVideo size={40} className="text-rose-500" />
-  if (['mp3', 'flac', 'wav', 'aac', 'm4a'].includes(ext))
-    return <FileAudio size={40} className="text-purple-500" />
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext))
-    return <FileImage size={40} className="text-sky-500" />
-  if (['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'].includes(ext))
-    return <FileText size={40} className="text-emerald-500" />
-  if (['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'cpp', 'c', 'h', 'json'].includes(ext))
-    return <FileCode size={40} className="text-indigo-500" />
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext))
-    return <FileArchive size={40} className="text-orange-500" />
-  return <File size={40} className="text-gray-400" />
+  return getFileIcon(item, 40)
 }
 
 // ─── View Components ──────────────────────────────────────────────────────────
@@ -116,19 +104,19 @@ function LargeIconCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       onClick={() => onSelect(item)}
-      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
+      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
     >
-      <button
+      <button aria-label="Remove from results"
         onClick={(e) => {
           e.stopPropagation()
           onRemove(item.fullPath)
         }}
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 z-10"
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-transparent text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-white/20 z-10"
         title="Remove from results"
       >
         <X size={12} />
       </button>
-      <div className="w-16 h-16 rounded-xl bg-gray-50 group-hover:bg-violet-50 flex items-center justify-center transition-colors">
+      <div className="w-16 h-16 rounded-xl bg-transparent group-hover:bg-violet-50 flex items-center justify-center transition-colors">
         {getLargeFileIcon(item)}
       </div>
       <p className="text-xs font-medium text-gray-700 text-center line-clamp-2 leading-tight w-full">
@@ -157,9 +145,9 @@ function TileCard({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={() => onSelect(item)}
-      className="relative flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-violet-300 hover:shadow-md hover:bg-violet-50/10 active:scale-98 cursor-pointer transition-all group"
+      className="relative flex items-center gap-3 p-3 rounded-xl bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-md hover:bg-violet-50/10 active:scale-98 cursor-pointer transition-all group"
     >
-      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center shrink-0">
         {getFileIcon(item)}
       </div>
       <div className="min-w-0 flex-1">
@@ -178,12 +166,12 @@ function TileCard({
             +{item.childCount}
           </span>
         )}
-        <button
+        <button aria-label="Remove from results"
           onClick={(e) => {
             e.stopPropagation()
             onRemove(item.fullPath)
           }}
-          className="w-7 h-7 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-gray-100 shrink-0"
+          className="w-7 h-7 rounded-lg bg-transparent text-gray-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center border border-white/20 shrink-0"
           title="Remove from results"
         >
           <X size={13} />
@@ -217,7 +205,7 @@ function ListRow({
             +{item.childCount}
           </span>
         )}
-        <button
+        <button aria-label="Remove from results"
           onClick={(e) => {
             e.stopPropagation()
             onRemove(item.fullPath)
@@ -245,7 +233,7 @@ function DetailsTable({
     <div className="overflow-auto flex-1">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50 sticky top-0">
+          <tr className="border-b border-white/20 bg-transparent sticky top-0">
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Name</th>
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Type</th>
             <th className="text-left text-xs font-medium text-gray-500 px-4 py-2.5">Size</th>
@@ -291,7 +279,7 @@ function DetailsTable({
                 {item.parentPath}
               </td>
               <td className="px-4 py-2 whitespace-nowrap text-right">
-                <button
+                <button aria-label={`Remove ${item.name} from results`}
                   onClick={(e) => {
                     e.stopPropagation()
                     onRemove(item.fullPath)
@@ -330,16 +318,14 @@ function TreeView({
 
   // Sort parents by depth so shallower come first
   const sortedParents = [...grouped.keys()].sort((a, b) => {
-    const aDepth = a.split('/').length
-    const bDepth = b.split('/').length
-    return aDepth - bDepth
+    return pathDepth(a) - pathDepth(b)
   })
 
   return (
     <div className="flex flex-col gap-4 p-4">
       {sortedParents.map((parent) => {
         const items = grouped.get(parent)!
-        const isRoot = !allParents.has(parent.split('/').slice(0, -1).join('/'))
+        const isRoot = !allParents.has(dirname(parent))
         return (
           <div key={parent} className={`${!isRoot ? 'ml-6' : ''}`}>
             {/* Parent label */}
@@ -347,14 +333,14 @@ function TreeView({
               <ChevronRight size={12} className="text-gray-300" />
               <span className="text-xs text-gray-400 font-mono truncate">{parent}</span>
             </div>
-            <div className="ml-4 flex flex-col gap-1 border-l-2 border-gray-100 pl-4">
+            <div className="ml-4 flex flex-col gap-1 border-l-2 border-white/20 pl-4">
               {items.map((item) => (
                 <motion.div
                   key={item.fullPath}
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={() => onSelect(item)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-violet-300 hover:shadow-sm hover:bg-violet-50/10 active:scale-99 transition-all cursor-pointer group"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-sm hover:bg-violet-50/10 active:scale-99 transition-all cursor-pointer group"
                 >
                   {getFileIcon(item)}
                   <span className="text-sm text-gray-800 font-medium truncate flex-1">
@@ -371,7 +357,7 @@ function TreeView({
                         {formatBytes(item.size)}
                       </span>
                     )}
-                    <button
+                    <button aria-label={`Remove ${item.name} from results`}
                       onClick={(e) => {
                         e.stopPropagation()
                         onRemove(item.fullPath)
@@ -409,7 +395,7 @@ function DriveDropdown({
       <button
         id="searcher-drive-dropdown"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-violet-300 text-sm font-medium text-gray-700 transition-all shadow-sm min-w-[180px] justify-between focus:outline-none"
+        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/40 backdrop-blur-md border border-white/40 border-white/30 hover:border-violet-300 text-sm font-medium text-gray-700 transition-all shadow-sm min-w-[180px] justify-between focus:outline-none"
       >
         <div className="flex items-center gap-2">
           <HardDrive size={15} className="text-violet-500 shrink-0" />
@@ -430,7 +416,7 @@ function DriveDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
+            className="absolute top-full left-0 mt-1 bg-white/95 backdrop-blur-md border border-white/40 border-white/30 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
           >
             {drives.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-3">No drives found</p>
@@ -502,7 +488,7 @@ function CollectModal({
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.92, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+        className="bg-white/40 rounded-2xl shadow-2xl p-6 max-w-md w-full"
       >
         {isCollecting ? (
           <>
@@ -544,7 +530,7 @@ function CollectModal({
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+            <div className="bg-transparent rounded-xl p-3 mb-4 flex items-center gap-2">
               <FolderOpen size={15} className="text-amber-500 shrink-0" />
               <span className="text-xs text-gray-600 font-mono truncate">
                 {collectResult.newFolderPath}
@@ -575,7 +561,7 @@ function CollectModal({
               </button>
               <button
                 onClick={() => {
-                  window.api.openPath?.(collectResult.newFolderPath)
+                  void window.api.openPath(collectResult.newFolderPath)
                   onClose()
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl transition-colors"
@@ -629,6 +615,12 @@ export function SearcherPage(): React.ReactElement {
   } = useSearcherStore()
 
   const inputRef = useRef<HTMLInputElement>(null)
+  // Drive searches can return tens of thousands of rows; render them in pages (P2)
+  const {
+    visible: visibleResults,
+    hasMore: hasMoreResults,
+    sentinelRef: resultsSentinelRef
+  } = useProgressiveList(results)
   const showCollectModal = isCollecting || collectResult !== null
 
   const [activeTab, setActiveTab] = useState('search')
@@ -644,6 +636,9 @@ export function SearcherPage(): React.ReactElement {
   const [automationLog, setAutomationLog] = useState<
     { msg: string; type: 'info' | 'success' | 'error' }[]
   >([])
+  // Scan results awaiting the user's review before anything is moved
+  const [automationPlan, setAutomationPlan] = useState<Record<string, SearchResult[]> | null>(null)
+  const [automationTotal, setAutomationTotal] = useState(0)
 
   const [activePlaybackVideo, setActivePlaybackVideo] = useState<SearchResult | null>(null)
 
@@ -654,7 +649,12 @@ export function SearcherPage(): React.ReactElement {
     if (isVideo) {
       setActivePlaybackVideo(item)
     } else {
-      window.api.openPath?.(item.fullPath)
+      void window.api
+        .openPath(item.fullPath)
+        .then((res: { ok: boolean; error?: { message: string } }) => {
+          // Apps and scripts are refused by the main process; reveal them instead
+          if (!res.ok) window.api.showItemInFolder(item.fullPath)
+        })
     }
   }, [])
 
@@ -810,84 +810,94 @@ export function SearcherPage(): React.ReactElement {
     isCollecting
   ])
 
-  const handleAutomation = useCallback(async (): Promise<void> => {
+  const automationApi = window.api as unknown as {
+    searcher: {
+      batchSearch: (p: {
+        drivePath: string
+        queries: string[]
+        destRoot: string
+      }) => Promise<Record<string, SearchResult[]>>
+      collect: (p: {
+        results: SearchResult[]
+        destRoot: string
+        folderName: string
+      }) => Promise<{ success: boolean; moved: number; errors: string[] }>
+    }
+  }
+
+  // Step 1: scan only. Nothing is moved until the user reviews the plan.
+  const handleAutomationScan = useCallback(async (): Promise<void> => {
     const searchRoot = sourceFolder || selectedDrive?.path
     const destRoot = destinationFolder || selectedDrive?.path
     if (!searchRoot || !destRoot || savedKeywords.length === 0 || isAutomating) return
 
     setIsAutomating(true)
+    setAutomationPlan(null)
     setAutomationStep(0)
-    setAutomationLog([{ msg: 'Starting full-drive categorization scan...', type: 'info' }])
+    setAutomationTotal(0)
+    setAutomationLog([
+      { msg: 'Scanning for keyword matches (nothing is moved yet)...', type: 'info' }
+    ])
     setAutomationStatus('Scanning...')
-
-    const api = window.api as unknown as {
-      searcher: {
-        batchSearch: (p: {
-          drivePath: string
-          queries: string[]
-        }) => Promise<Record<string, SearchResult[]>>
-        collect: (p: {
-          results: SearchResult[]
-          destRoot: string
-          folderName: string
-        }) => Promise<{ success: boolean; moved: number }>
-      }
+    try {
+      const plan = await automationApi.searcher.batchSearch({
+        drivePath: searchRoot,
+        queries: savedKeywords,
+        destRoot
+      })
+      setAutomationPlan(plan)
+    } catch (err) {
+      setAutomationLog((prev) => [
+        { msg: `Scan failed: ${(err as Error).message}`, type: 'error' },
+        ...prev
+      ])
+    } finally {
+      setIsAutomating(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceFolder, destinationFolder, selectedDrive, savedKeywords, isAutomating])
+
+  // Step 2: move the reviewed plan. Each keyword is its own undoable History batch.
+  const handleAutomationApply = useCallback(async (): Promise<void> => {
+    const destRoot = destinationFolder || selectedDrive?.path
+    if (!automationPlan || !destRoot || isAutomating) return
+
+    const keywords = Object.keys(automationPlan).filter((k) => automationPlan[k].length > 0)
+    setAutomationTotal(keywords.length)
+    setIsAutomating(true)
+    setAutomationStep(0)
+    setAutomationLog([{ msg: 'Moving reviewed matches...', type: 'info' }])
+    let overallMoved = 0
 
     try {
-      // 1. Batch Search
-      const batchResults = await api.searcher.batchSearch({
-        drivePath: searchRoot,
-        queries: savedKeywords
-      })
-
-      const totalKeywords = savedKeywords.length
-      let overallMoved = 0
-
-      // 2. Process each keyword
-      for (let i = 0; i < totalKeywords; i++) {
-        const keyword = savedKeywords[i]
-        const keywordItems = batchResults[keyword] || []
-
+      for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i]
+        const items = automationPlan[keyword]
         setAutomationStep(i + 1)
+        setAutomationStatus(`Organizing: ${keyword} (${items.length} items)`)
 
-        if (keywordItems.length === 0) {
-          setAutomationLog((prev) => [
-            { msg: `Skipping "${keyword}": No matches found.`, type: 'info' },
-            ...prev
-          ])
-          continue
-        }
-
-        setAutomationStatus(`Organizing: ${keyword} (${keywordItems.length} items)`)
-        setAutomationLog((prev) => [
-          { msg: `Moving ${keywordItems.length} items to folder "${keyword}"...`, type: 'info' },
-          ...prev
-        ])
-
-        const res = await api.searcher.collect({
-          results: keywordItems,
+        const res = await automationApi.searcher.collect({
+          results: items,
           destRoot,
           folderName: keyword
         })
-
-        if (res.success) {
-          overallMoved += res.moved
-          setAutomationLog((prev) => [
-            { msg: `Successfully organized "${keyword}".`, type: 'success' },
-            ...prev
-          ])
-        } else {
-          setAutomationLog((prev) => [
-            { msg: `Completed "${keyword}" with some issues.`, type: 'error' },
-            ...prev
-          ])
-        }
+        overallMoved += res.moved
+        setAutomationLog((prev) => [
+          res.success
+            ? { msg: `Moved ${res.moved} item(s) into "${keyword}".`, type: 'success' }
+            : {
+                msg: `"${keyword}": moved ${res.moved}, ${res.errors.length} issue(s) — ${res.errors[0]}`,
+                type: 'error'
+              },
+          ...prev
+        ])
       }
-
       setAutomationStatus('Complete')
       setAutomationLog((prev) => [
-        { msg: `Automation finished! Total items organized: ${overallMoved}`, type: 'success' },
+        {
+          msg: `Finished: ${overallMoved} item(s) organized. Undo any keyword from the History page.`,
+          type: 'success'
+        },
         ...prev
       ])
     } catch (err) {
@@ -896,9 +906,11 @@ export function SearcherPage(): React.ReactElement {
         ...prev
       ])
     } finally {
+      setAutomationPlan(null)
       setIsAutomating(false)
     }
-  }, [sourceFolder, destinationFolder, selectedDrive, savedKeywords, isAutomating])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [automationPlan, destinationFolder, selectedDrive, isAutomating])
 
   const handleCloseModal = (): void => {
     setCollectResult(null)
@@ -907,10 +919,10 @@ export function SearcherPage(): React.ReactElement {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         {/* Top Header with Tabs */}
-        <div className="bg-white border-b border-gray-200 px-6 pt-4 shrink-0 shadow-sm z-10">
+        <div className="bg-white/5 backdrop-blur-md border-b border-white/20 border-white/30 px-6 pt-4 shrink-0 shadow-sm z-10">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
               <FolderSearch2 size={24} className="text-violet-600" />
@@ -919,21 +931,21 @@ export function SearcherPage(): React.ReactElement {
             <Tabs.List className="flex bg-gray-100 p-1 rounded-xl gap-1">
               <Tabs.Trigger
                 value="search"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-violet-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-violet-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Search size={14} />
                 Search
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="import"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Layers size={14} />
                 Import
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="automation"
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all data-[state=active]:bg-white/40 data-[state=active]:text-amber-600 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 <Zap size={14} />
                 Automation
@@ -948,10 +960,10 @@ export function SearcherPage(): React.ReactElement {
           className="flex flex-col h-full overflow-hidden focus:outline-none"
         >
           {/* Main Control Panel (re-organized) */}
-          <div className="shrink-0 bg-white border-b border-gray-100 shadow-sm relative z-0">
+          <div className="shrink-0 bg-white/5 backdrop-blur-md border-b border-white/20 shadow-sm relative z-0">
             {/* Row 1: Source + Query + Destination */}
             <div className="p-5 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-xs text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 mr-auto">
+              <div className="flex items-center gap-2 text-xs text-gray-400 font-medium bg-transparent px-3 py-1.5 rounded-full border border-white/20 mr-auto">
                 <Info size={12} className="text-violet-400" />
                 Recursive tree mapping + exact match deduplication
               </div>
@@ -964,7 +976,7 @@ export function SearcherPage(): React.ReactElement {
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all shadow-sm max-w-[220px] focus:outline-none ${
                   sourceFolder
                     ? 'bg-violet-50 border-violet-200 text-violet-700'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-violet-300'
+                    : 'bg-white/40 backdrop-blur-md border border-white/40-gray-200 text-gray-600 hover:border-violet-300'
                 }`}
                 title={sourceFolder || 'Choose specific source folder'}
               >
@@ -983,7 +995,7 @@ export function SearcherPage(): React.ReactElement {
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all shadow-sm max-w-[220px] focus:outline-none ${
                   destinationFolder
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-violet-300'
+                    : 'bg-white/40 backdrop-blur-md border border-white/40-gray-200 text-gray-600 hover:border-violet-300'
                 }`}
                 title={destinationFolder || 'Choose collection destination'}
               >
@@ -1010,10 +1022,10 @@ export function SearcherPage(): React.ReactElement {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a name to search… (e.g. anime_1, MyDocument)"
-                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 focus:bg-white transition-all font-medium"
+                  className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-white/30 bg-transparent text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 focus:bg-white/40 transition-all font-medium"
                 />
                 {query.trim() && (
-                  <button
+                  <button aria-label="Save keyword"
                     onClick={() => saveKeyword(query)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-all opacity-0 group-hover:opacity-100 focus:outline-none"
                     title="Save keyword"
@@ -1062,10 +1074,10 @@ export function SearcherPage(): React.ReactElement {
                       placeholder="Filter keywords…"
                       value={keywordFilter}
                       onChange={(e) => setKeywordFilter(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1 rounded-lg border border-gray-100 bg-gray-50/50 text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-300 focus:bg-white transition-all font-medium"
+                      className="w-full pl-8 pr-3 py-1 rounded-lg border border-white/20 bg-transparent text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-300 focus:bg-white/40 transition-all font-medium"
                     />
                     {keywordFilter && (
-                      <button
+                      <button aria-label="Clear keyword filter"
                         onClick={() => setKeywordFilter('')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
                       >
@@ -1081,7 +1093,7 @@ export function SearcherPage(): React.ReactElement {
                     .map((kw) => (
                       <div
                         key={kw}
-                        className="group flex items-center bg-white border border-gray-100 hover:border-violet-200 rounded-lg px-2 py-1 transition-all shadow-sm"
+                        className="group flex items-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-200 rounded-lg px-2 py-1 transition-all shadow-sm"
                       >
                         <button
                           onClick={() => {
@@ -1092,7 +1104,7 @@ export function SearcherPage(): React.ReactElement {
                         >
                           {kw}
                         </button>
-                        <button
+                        <button aria-label={`Remove keyword ${kw}`}
                           onClick={() => removeKeyword(kw)}
                           className="ml-1.5 p-0.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
                         >
@@ -1124,7 +1136,7 @@ export function SearcherPage(): React.ReactElement {
                     onClick={() => setViewMode(mode)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all focus:outline-none ${
                       viewMode === mode
-                        ? 'bg-white text-violet-700 shadow-sm'
+                        ? 'bg-white/40 text-violet-700 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -1211,7 +1223,7 @@ export function SearcherPage(): React.ReactElement {
                           setQuery(ex)
                           inputRef.current?.focus()
                         }}
-                        className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors font-mono focus:outline-none"
+                        className="text-xs px-3 py-1.5 bg-white/40 backdrop-blur-md border border-white/40 border-white/30 rounded-lg text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors font-mono focus:outline-none"
                       >
                         {ex}
                       </button>
@@ -1292,7 +1304,7 @@ export function SearcherPage(): React.ReactElement {
                 >
                   {viewMode === 'large-icons' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3 content-start">
-                      {results.map((item) => (
+                      {visibleResults.map((item) => (
                         <LargeIconCard
                           key={item.fullPath}
                           item={item}
@@ -1305,7 +1317,7 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'tiles' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 content-start">
-                      {results.map((item) => (
+                      {visibleResults.map((item) => (
                         <TileCard
                           key={item.fullPath}
                           item={item}
@@ -1318,8 +1330,8 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'list' && (
                     <div className="p-4">
-                      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                        {results.map((item) => (
+                      <div className="bg-white/40 rounded-2xl border border-white/20 overflow-hidden">
+                        {visibleResults.map((item) => (
                           <ListRow
                             key={item.fullPath}
                             item={item}
@@ -1333,7 +1345,7 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'details' && (
                     <DetailsTable
-                      results={results}
+                      results={visibleResults}
                       onRemove={removeResult}
                       onSelect={handleItemSelect}
                     />
@@ -1341,10 +1353,19 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'tree' && (
                     <TreeView
-                      results={results}
+                      results={visibleResults}
                       onRemove={removeResult}
                       onSelect={handleItemSelect}
                     />
+                  )}
+                  {hasMoreResults && (
+                    <div
+                      ref={resultsSentinelRef}
+                      className="py-4 text-center text-xs text-gray-400"
+                      aria-live="polite"
+                    >
+                      Showing {visibleResults.length} of {results.length}…
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -1361,7 +1382,7 @@ export function SearcherPage(): React.ReactElement {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+              className="bg-white/40 rounded-3xl border border-white/30 shadow-xl overflow-hidden"
             >
               <div className="bg-emerald-600 p-8 text-white relative overflow-hidden">
                 <div className="relative z-10">
@@ -1381,10 +1402,10 @@ export function SearcherPage(): React.ReactElement {
                 <div className="flex items-center gap-4 mb-8">
                   <button
                     onClick={handlePickImportRoot}
-                    className="flex-1 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl border-2 border-dashed border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group focus:outline-none"
+                    className="flex-1 flex items-center justify-between gap-4 px-6 py-4 rounded-2xl border-2 border-dashed border-white/30 hover:border-emerald-300 hover:bg-emerald-50 transition-all group focus:outline-none"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                      <div className="w-12 h-12 rounded-xl bg-transparent group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
                         <FolderOpen
                           size={24}
                           className="text-gray-400 group-hover:text-emerald-600"
@@ -1452,12 +1473,12 @@ export function SearcherPage(): React.ReactElement {
                         {scannedKeywords.map((kw) => (
                           <div
                             key={kw}
-                            className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl group hover:border-emerald-200 transition-all"
+                            className="flex items-center justify-between gap-2 px-3 py-2 bg-transparent border border-white/20 rounded-xl group hover:border-emerald-200 transition-all"
                           >
                             <span className="text-xs font-mono font-medium text-gray-700 truncate">
                               {kw}
                             </span>
-                            <button
+                            <button aria-label={`Discard keyword ${kw}`}
                               onClick={() =>
                                 setScannedKeywords((prev) => prev.filter((k) => k !== kw))
                               }
@@ -1495,7 +1516,7 @@ export function SearcherPage(): React.ReactElement {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden"
+              className="bg-white/40 rounded-3xl border border-white/30 shadow-xl overflow-hidden"
             >
               <div className="bg-amber-500 p-8 text-white relative overflow-hidden">
                 <div className="relative z-10">
@@ -1518,19 +1539,26 @@ export function SearcherPage(): React.ReactElement {
                       </div>
                       <h3 className="text-xl font-bold text-gray-800">{automationStatus}</h3>
                       <p className="text-sm text-gray-400 mt-1">
-                        Keyword {automationStep} of {savedKeywords.length}
+                        Keyword {automationStep} of {automationTotal}
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
                         <span>Overall Progress</span>
-                        <span>{Math.round((automationStep / savedKeywords.length) * 100)}%</span>
+                        <span>
+                          {automationTotal
+                            ? Math.round((automationStep / automationTotal) * 100)
+                            : 0}
+                          %
+                        </span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden border border-gray-200 p-0.5">
+                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden border border-white/30 p-0.5">
                         <motion.div
                           className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full shadow-sm"
-                          animate={{ width: `${(automationStep / savedKeywords.length) * 100}%` }}
+                          animate={{
+                            width: `${automationTotal ? (automationStep / automationTotal) * 100 : 0}%`
+                          }}
                         />
                       </div>
                     </div>
@@ -1552,13 +1580,13 @@ export function SearcherPage(): React.ReactElement {
                 ) : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                      <div className="p-5 rounded-2xl bg-transparent border border-white/20">
                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
                           Total Managed Keywords
                         </p>
                         <p className="text-3xl font-black text-gray-800">{savedKeywords.length}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                      <div className="p-5 rounded-2xl bg-transparent border border-white/20">
                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
                           Automation Scope
                         </p>
@@ -1573,21 +1601,32 @@ export function SearcherPage(): React.ReactElement {
                       <div>
                         <p className="text-sm font-bold text-blue-900">How it works</p>
                         <p className="text-xs text-blue-700/80 mt-1 leading-relaxed">
-                          We will perform a single deep scan of your source folder. Any file or
-                          folder starting with your saved keywords will be moved to a matching
-                          subfolder in your destination directory. Existing folders will be merged.
+                          We first scan your source folder and show every match per keyword. Nothing
+                          is moved until you review the list and confirm. Each keyword&apos;s move
+                          can be undone from the History page.
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleAutomation}
-                      disabled={savedKeywords.length === 0 || (!sourceFolder && !selectedDrive)}
-                      className="w-full py-5 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-amber-200 hover:shadow-amber-400 transition-all flex items-center justify-center gap-3 active:scale-95 focus:outline-none"
-                    >
-                      <PlayCircle size={24} />
-                      Start Organizing All Keywords
-                    </button>
+                    {automationPlan && (
+                      <AutomationPreview
+                        plan={automationPlan}
+                        destRoot={destinationFolder || selectedDrive?.path || ''}
+                        onApply={handleAutomationApply}
+                        onDiscard={() => setAutomationPlan(null)}
+                      />
+                    )}
+
+                    {!automationPlan && (
+                      <button
+                        onClick={handleAutomationScan}
+                        disabled={savedKeywords.length === 0 || (!sourceFolder && !selectedDrive)}
+                        className="w-full py-5 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-amber-200 hover:shadow-amber-400 transition-all flex items-center justify-center gap-3 active:scale-95 focus:outline-none"
+                      >
+                        <PlayCircle size={24} />
+                        Scan &amp; Preview Matches
+                      </button>
+                    )}
 
                     {savedKeywords.length === 0 && (
                       <p className="text-xs text-center text-rose-500 font-medium">
@@ -1609,7 +1648,7 @@ export function SearcherPage(): React.ReactElement {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="shrink-0 bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
+            className="shrink-0 bg-white/40 backdrop-blur-md border border-t border-white/20 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
@@ -1681,7 +1720,7 @@ export function SearcherPage(): React.ReactElement {
                     {activePlaybackVideo.fullPath}
                   </p>
                 </div>
-                <button
+                <button aria-label="Close video player"
                   onClick={() => setActivePlaybackVideo(null)}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all cursor-pointer inline-flex items-center justify-center"
                 >
@@ -1692,7 +1731,7 @@ export function SearcherPage(): React.ReactElement {
               {/* Video Player */}
               <div className="aspect-video bg-black flex items-center justify-center">
                 <video
-                  src={`media://${activePlaybackVideo.fullPath}`}
+                  src={toMediaUrl(activePlaybackVideo.fullPath)}
                   controls
                   autoPlay
                   className="w-full h-full object-contain"
@@ -1715,7 +1754,7 @@ export function SearcherPage(): React.ReactElement {
               </div>
 
               {/* Modal Footer Info */}
-              <div className="p-4 bg-gray-950/60 border-t border-gray-850 flex items-center justify-between text-[11px] text-gray-400">
+              <div className="p-4 bg-gray-950/60 border-t border-gray-800 flex items-center justify-between text-[11px] text-gray-400">
                 <span>Size: {formatBytes(activePlaybackVideo.size)}</span>
                 <span className="font-mono">
                   {activePlaybackVideo.extension.toUpperCase()} Format

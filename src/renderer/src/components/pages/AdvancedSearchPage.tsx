@@ -26,8 +26,8 @@ export function AdvancedSearchPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50/50">
-      <div className="p-6 pb-4 border-b bg-white">
+    <div className="h-full flex flex-col bg-transparent">
+      <div className="p-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Search className="w-6 h-6 text-indigo-600" />
           Advanced Search Engine
@@ -37,10 +37,10 @@ export function AdvancedSearchPage() {
         </p>
 
         {/* Indexing Controls */}
-        <div className="mt-6 flex gap-3 items-end p-4 rounded-xl border bg-gray-50">
+        <div className="mt-6 flex gap-3 items-end p-4 rounded-xl border bg-transparent">
           <div className="flex-1 space-y-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">Target Directory</label>
-            <Button variant="outline" className="w-full justify-start text-left font-normal bg-white" onClick={handleSelectFolder}>
+            <Button variant="outline" className="w-full justify-start text-left font-normal bg-white/40" onClick={handleSelectFolder}>
               <FolderOpen className="w-4 h-4 mr-2" />
               {targetDir || 'Select a folder to index...'}
             </Button>

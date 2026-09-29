@@ -3,6 +3,7 @@ import { FileText, Download, CheckCircle, AlertCircle, FileSpreadsheet, Braces }
 import { Mp4FileResult, Mp4AnalyzerSummary } from '../../types/mp4analyzer'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
+import { getHealthScore } from '../../lib/mp4-health'
 
 interface ReportPanelProps {
   results: Mp4FileResult[]
@@ -108,7 +109,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       const fileRows = results.map((r) => {
         const sizeMB = (r.fileSize / (1024 * 1024)).toFixed(2) + ' MB'
         const duration = r.metadata?.duration ? Math.round(r.metadata.duration) + 's' : 'N/A'
-        const health = (r.playbackVerification?.healthScore ?? 100) + '%'
+        const health = getHealthScore(r) + '%'
         const errors = r.ffmpegValidation.errorCount
         return [
           r.fileName,
@@ -151,8 +152,8 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
 
   if (results.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-white border border-gray-100 rounded-2xl p-10 py-24 text-center shadow-xs">
-        <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3">
+      <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-10 py-24 text-center shadow-xs">
+        <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center text-gray-400 mb-3">
           <FileText size={24} />
         </div>
         <h3 className="text-sm font-semibold text-gray-800">No report generated</h3>
@@ -169,7 +170,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
   return (
     <div className="flex-1 overflow-auto space-y-6 pr-1">
       {/* Report overview */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs grid grid-cols-3 gap-8 items-center">
+      <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-6 shadow-xs grid grid-cols-3 gap-8 items-center">
         <div className="col-span-2 space-y-3">
           <div className="flex items-center gap-2">
             {overallHealth >= 90 ? (
@@ -189,7 +190,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* Big Health Score Badge */}
-        <div className="flex flex-col items-center justify-center border-l border-gray-100 h-full py-2">
+        <div className="flex flex-col items-center justify-center border-l border-white/20 h-full py-2">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
             Library Health
           </span>
@@ -204,7 +205,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       {/* Export Cards */}
       <div className="grid grid-cols-3 gap-6">
         {/* CSV Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <FileSpreadsheet size={22} className="stroke-[2.2]" />
           </div>
@@ -217,7 +218,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportCsv}
             disabled={exporting !== null}
-            className="w-full py-2 border border-emerald-250 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'csv' ? 'Exporting...' : 'Save CSV Report'}
@@ -225,7 +226,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* JSON Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <Braces size={22} className="stroke-[2.2]" />
           </div>
@@ -238,7 +239,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportJson}
             disabled={exporting !== null}
-            className="w-full py-2 border border-blue-250 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'json' ? 'Exporting...' : 'Save JSON Report'}
@@ -246,7 +247,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
         </div>
 
         {/* PDF Exporter */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs flex flex-col items-center text-center space-y-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <FileText size={22} className="stroke-[2.2]" />
           </div>
@@ -260,7 +261,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportPdf}
             disabled={exporting !== null}
-            className="w-full py-2 border border-indigo-250 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:bg-indigo-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:bg-indigo-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'pdf' ? 'Generating...' : 'Save PDF Report'}

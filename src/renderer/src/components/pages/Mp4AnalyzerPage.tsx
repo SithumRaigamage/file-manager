@@ -1,12 +1,32 @@
-import React, { useEffect } from 'react'
-import { Folder, FileSearch, XCircle, RefreshCw, BarChart, Table, FileText } from 'lucide-react'
+import React, { useEffect, useRef } from 'react'
+import {
+  Folder,
+  FileSearch,
+  XCircle,
+  RefreshCw,
+  BarChart,
+  Table,
+  FileText,
+  History,
+  X
+} from 'lucide-react'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 import { SummaryCards } from '../mp4analyzer/SummaryCards'
 import { ResultsTable } from '../mp4analyzer/ResultsTable'
 import { ChartsPanel } from '../mp4analyzer/ChartsPanel'
 import { ReportPanel } from '../mp4analyzer/ReportPanel'
 import { FileDetailDrawer } from '../mp4analyzer/FileDetailDrawer'
+import { ScanHistoryPanel } from '../mp4analyzer/ScanHistoryPanel'
+import { useTabActivated } from '../../lib/tab-activity'
 import { cn } from '../../lib/utils'
+import { basename } from '../../lib/paths'
+import { toast } from '../../store/useToastStore'
+
+/** Electron prefixes rejected IPC errors with "Error invoking remote method '…': Error: ". */
+function ipcErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  return message.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, '')
+}
 
 export function Mp4AnalyzerPage(): React.JSX.Element {
   const {
@@ -23,8 +43,19 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     setScannedFolder,
     setActiveTab,
     setSelectedFile,
-    resetStore
+    resetStore,
+    history,
+    historyError,
+    viewingScan,
+    fetchHistory,
+    openScan,
+    closeViewingScan
   } = useMp4AnalyzerStore()
+
+  useTabActivated(fetchHistory)
+
+  // Identifies the latest scan; results from a superseded scan are dropped
+  const scanIdRef = useRef(0)
 
   // Subscribe to progress events from the main process
   useEffect(() => {
@@ -37,21 +68,37 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     return () => unsubscribe()
   }, [setProgress, addResult])
 
+  // Folders macOS won't let us read (e.g. ~/Movies/TV) are skipped, not fatal
+  useEffect(() => {
+    return window.api.mp4analyzer.onSkippedFolders((folders: string[]) => {
+      const names = folders.slice(0, 3).map(basename).join(', ')
+      const more = folders.length > 3 ? ` and ${folders.length - 3} more` : ''
+      toast.info(
+        `Skipped ${folders.length} folder${folders.length === 1 ? '' : 's'} FileFlow isn't allowed to read: ${names}${more}.`
+      )
+    })
+  }, [])
+
   const handleSelectFile = async (): Promise<void> => {
     try {
       const filePaths = await window.api.openFiles()
       if (filePaths.length === 0) return
 
+      const scanId = ++scanIdRef.current
       resetStore()
+      setActiveTab('table')
       setScanState('scanning')
       setScannedFolder(null)
       setProgress({ scanned: 0, total: 1, currentFile: filePaths[0] })
 
       const result = await window.api.mp4analyzer.analyzeFile(filePaths[0])
+      if (scanId !== scanIdRef.current) return
       addResult(result)
       setScanState('done')
+      fetchHistory()
     } catch (err) {
       console.error(err)
+      toast.error(ipcErrorMessage(err))
       setScanState('idle')
     }
   }
@@ -61,16 +108,21 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       const folderPath = await window.api.openDirectory()
       if (!folderPath) return
 
+      const scanId = ++scanIdRef.current
       resetStore()
+      setActiveTab('table')
       setScanState('scanning')
       setScannedFolder(folderPath)
       setProgress({ scanned: 0, total: 1, currentFile: 'Scanning folder...' })
 
       const scanResults = await window.api.mp4analyzer.analyzeFolder(folderPath)
+      if (scanId !== scanIdRef.current) return
       setResults(scanResults)
       setScanState('done')
+      fetchHistory()
     } catch (err) {
       console.error(err)
+      toast.error(ipcErrorMessage(err))
       setScanState('idle')
     }
   }
@@ -84,7 +136,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-gray-50/20">
+    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-transparent">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -109,7 +161,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
             <>
               <button
                 onClick={handleSelectFile}
-                className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-xs active:bg-gray-100"
+                className="px-4 py-2 border border-white/30 bg-white/40 hover:bg-transparent text-gray-700 font-semibold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-xs active:bg-gray-100"
               >
                 <FileSearch size={15} className="text-gray-500" />
                 Select File
@@ -128,7 +180,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
 
       {/* Progress Section */}
       {scanState === 'scanning' && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-gray-400 truncate max-w-xs">
               Analyzing: <strong className="text-gray-700 font-bold">{progress.currentFile}</strong>
@@ -156,49 +208,71 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
         </div>
       )}
 
+      {/* Saved-scan banner */}
+      {viewingScan && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs">
+          <span className="flex items-center gap-2 text-indigo-700 font-medium min-w-0">
+            <History size={14} className="shrink-0" />
+            <span className="truncate">
+              Viewing saved scan from{' '}
+              <strong>{new Date(viewingScan.finishedAt).toLocaleString()}</strong> —{' '}
+              {viewingScan.targetPath}
+            </span>
+          </span>
+          <button
+            onClick={closeViewingScan}
+            className="shrink-0 p-1 rounded-lg text-indigo-500 hover:bg-indigo-100 cursor-pointer"
+            aria-label="Close saved scan"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Summary Stats Row */}
-      {results.length > 0 && <SummaryCards summary={summary} />}
+      {results.length > 0 && activeTab !== 'history' && <SummaryCards summary={summary} />}
 
       {/* Tabs navigation */}
-      {results.length > 0 && (
-        <div className="border-b border-gray-100 flex items-center justify-between">
+      {(results.length > 0 || history.length > 0) && (
+        <div className="border-b border-white/20 flex items-center justify-between">
           <div className="flex gap-6">
-            <button
-              onClick={() => setActiveTab('table')}
-              className={cn(
-                'pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-1.5',
-                activeTab === 'table'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              )}
-            >
-              <Table size={14} />
-              Files Table
-            </button>
-            <button
-              onClick={() => setActiveTab('charts')}
-              className={cn(
-                'pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-1.5',
-                activeTab === 'charts'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              )}
-            >
-              <BarChart size={14} />
-              Visual Diagnostics
-            </button>
-            <button
-              onClick={() => setActiveTab('report')}
-              className={cn(
-                'pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-1.5',
-                activeTab === 'report'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              )}
-            >
-              <FileText size={14} />
-              Export Reports
-            </button>
+            {[
+              { id: 'table' as const, label: 'Files Table', icon: Table, show: results.length > 0 },
+              {
+                id: 'charts' as const,
+                label: 'Visual Diagnostics',
+                icon: BarChart,
+                show: results.length > 0
+              },
+              {
+                id: 'report' as const,
+                label: 'Export Reports',
+                icon: FileText,
+                show: results.length > 0
+              },
+              {
+                id: 'history' as const,
+                label: `Scan History (${history.length})`,
+                icon: History,
+                show: true
+              }
+            ]
+              .filter((t) => t.show)
+              .map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={cn(
+                    'pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer flex items-center gap-1.5',
+                    activeTab === t.id
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                  )}
+                >
+                  <t.icon size={14} />
+                  {t.label}
+                </button>
+              ))}
           </div>
 
           <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest pb-3">
@@ -209,8 +283,10 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
 
       {/* Main Tab Panel Container */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {results.length === 0 && scanState !== 'scanning' ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-xs">
+        {activeTab === 'history' ? (
+          <ScanHistoryPanel history={history} error={historyError} onOpenScan={openScan} />
+        ) : results.length === 0 && scanState !== 'scanning' ? (
+          <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl p-10 text-center shadow-xs">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 shadow-xs">
               <FileSearch size={26} className="stroke-[2.2]" />
             </div>
@@ -222,7 +298,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={handleSelectFile}
-                className="px-4 py-2.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 border border-white/30 bg-white/40 hover:bg-transparent text-gray-700 font-bold rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all flex items-center gap-1.5"
               >
                 Choose file
               </button>
@@ -233,6 +309,15 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
                 Scan folder
               </button>
             </div>
+            {history.length > 0 && (
+              <button
+                onClick={() => setActiveTab('history')}
+                className="mt-4 text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1"
+              >
+                <History size={13} />
+                View scan history ({history.length})
+              </button>
+            )}
           </div>
         ) : (
           <>

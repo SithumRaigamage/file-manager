@@ -16,7 +16,10 @@ interface FilePreviewListProps {
   rowHeight?: number
 }
 
-export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps): React.JSX.Element {
+export function FilePreviewList({
+  items,
+  rowHeight = 40
+}: FilePreviewListProps): React.JSX.Element {
   const parentRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({
@@ -28,16 +31,16 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic border rounded-md bg-slate-50">
+      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm italic border rounded-md bg-transparent">
         No files to preview.
       </div>
     )
   }
 
   return (
-    <div 
-      ref={parentRef} 
-      className="flex-1 overflow-auto border rounded-md bg-white w-full shadow-sm"
+    <div
+      ref={parentRef}
+      className="flex-1 overflow-auto border rounded-md bg-white/40 w-full shadow-sm"
     >
       <div
         className="w-full relative"
@@ -50,8 +53,8 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
           return (
             <div
               key={virtualRow.index}
-              className={`absolute top-0 left-0 w-full px-4 border-b border-slate-100 flex items-center gap-4 text-sm
-                ${virtualRow.index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}
+              className={`absolute top-0 left-0 w-full px-4 border-b border-white/20 flex items-center gap-4 text-sm
+                ${virtualRow.index % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}
                 ${item.conflict ? 'bg-red-50' : ''}
               `}
               style={{
@@ -62,7 +65,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               <div className="flex-1 truncate text-slate-600" title={item.originalName}>
                 {item.originalName}
               </div>
-              
+
               <div className="text-slate-400 shrink-0 text-xs">
                 {item.action ? `(${item.action}) →` : '→'}
               </div>
@@ -80,7 +83,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               {item.progress !== undefined && (
                 <div className="shrink-0 w-24">
                   <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-blue-500 transition-all duration-300"
                       style={{ width: `${item.progress}%` }}
                     />
@@ -89,13 +92,15 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               )}
 
               {item.status && (
-                <div className={`shrink-0 w-20 text-xs font-medium text-right capitalize
+                <div
+                  className={`shrink-0 w-20 text-xs font-medium text-right capitalize
                   ${item.status === 'success' || item.status === 'completed' ? 'text-green-600' : ''}
                   ${item.status === 'failed' ? 'text-red-600' : ''}
                   ${item.status === 'skipped' ? 'text-orange-500' : ''}
                   ${item.status === 'processing' ? 'text-blue-600' : ''}
                   ${item.status === 'pending' ? 'text-slate-400' : ''}
-                `}>
+                `}
+                >
                   {item.status}
                 </div>
               )}

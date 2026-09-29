@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'fs'
+import path from 'path'
 
 export class DiskSpaceChecker {
   /**
@@ -9,24 +9,24 @@ export class DiskSpaceChecker {
   static async hasEnoughSpace(targetPath: string, requiredBytes: number): Promise<boolean> {
     try {
       // Ensure target directory exists to check its drive
-      const dirPath = fs.existsSync(targetPath) ? targetPath : path.dirname(targetPath);
-      
+      const dirPath = fs.existsSync(targetPath) ? targetPath : path.dirname(targetPath)
+
       if (!fs.existsSync(dirPath)) {
         // If parent doesn't exist, we fallback to true since we can't easily check
         // without walking up the tree, and the conversion job will just fail if it runs out of space.
-        return true; 
+        return true
       }
 
-      const stats = await fs.promises.statfs(dirPath);
+      const stats = await fs.promises.statfs(dirPath)
       // bavail is free blocks available to unprivileged user
       // bsize is fundamental file system block size
-      const freeSpaceBytes = stats.bavail * stats.bsize;
+      const freeSpaceBytes = stats.bavail * stats.bsize
 
-      return freeSpaceBytes > requiredBytes;
+      return freeSpaceBytes > requiredBytes
     } catch (err) {
-      console.warn('[DiskSpaceChecker] Failed to check disk space:', err);
+      console.warn('[DiskSpaceChecker] Failed to check disk space:', err)
       // Fail open if we cannot check disk space
-      return true;
+      return true
     }
   }
 
@@ -36,10 +36,10 @@ export class DiskSpaceChecker {
    */
   static estimateRequiredBytes(inputFilePath: string): number {
     try {
-      const stats = fs.statSync(inputFilePath);
-      return stats.size * 1.5;
+      const stats = fs.statSync(inputFilePath)
+      return stats.size * 1.5
     } catch {
-      return 100 * 1024 * 1024; // Default guess 100MB if we can't read file
+      return 100 * 1024 * 1024 // Default guess 100MB if we can't read file
     }
   }
 }

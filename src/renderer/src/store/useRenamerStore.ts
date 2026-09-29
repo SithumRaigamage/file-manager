@@ -26,6 +26,7 @@ interface RenamerState {
   updatePattern: (pattern: RenamePattern) => void
   generatePreview: () => Promise<void>
   applyRename: () => Promise<void>
+  reset: () => void
 }
 
 export const useRenamerStore = create<RenamerState>((set, get) => ({
@@ -83,5 +84,14 @@ export const useRenamerStore = create<RenamerState>((set, get) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  reset: () => {
+    set({
+      selectedFiles: [],
+      previewItems: [],
+      isLoading: false,
+      error: null
+    })
   }
 }))

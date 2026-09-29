@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useTabActivated } from '../../lib/tab-activity';
 import { useDashboardStore } from '../../store/useDashboardStore';
 import {
   Card,
@@ -15,9 +15,7 @@ export function DashboardPage() {
   const { stats, isLoading, error, fetchStats } = useDashboardStore();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  useTabActivated(fetchStats);
 
   return (
     <div className="h-full overflow-auto p-6 space-y-6">

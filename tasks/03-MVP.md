@@ -5,6 +5,7 @@ Cross-reference: `docs/FEATURE-SPECIFICATION.md` for full acceptance criteria pe
 ## Organizer (MVP)
 
 - [ ] Quick Rules: Images / Videos / Docs / Archives, zero-config.
+- [x] Quick Rule: Organize by Date — group files and folders into `YYYY-MM-DD/` subfolders by their own modified date (added 2026-09-22, see `docs/CHANGELOG.md`).
 - [ ] Preview-before-apply for all organize actions.
 - [ ] Conflict prompt (rename/skip/overwrite) on destination collision.
 - [ ] Auto Mode (folder watcher) for at least one active rule set at MVP.
@@ -35,3 +36,7 @@ Cross-reference: `docs/FEATURE-SPECIFICATION.md` for full acceptance criteria pe
 - [ ] Undo/History view listing recent batches across all operation types.
 
 **Explicitly deferred past MVP** (see `docs/PRODUCT-STRATEGY.md`, `00-MASTER-ROADMAP.md`): Smart Rules regex/nested conditions, saved multi-step Workflows, AI-assisted classification, cloud sync.
+
+## Requested additions outside MVP scope
+
+- [x] MP4 Integrity Analyzer: scan history — saved scans with date/target/duration, health counts, status, change since last scan; reopen full results (incl. logs/atoms) with missing-file flags; keep last N (Settings). Added 2026-09-27, see `docs/CHANGELOG.md`.

@@ -128,7 +128,7 @@ export function WorkflowBuilder({ onCancel, onSuccess }: { onCancel: () => void,
                       <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{idx + 1}</div>
                       <span className="font-semibold capitalize">{step.type}</span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleRemoveStep(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                    <Button aria-label="Remove step" variant="ghost" size="sm" onClick={() => handleRemoveStep(idx)} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </CardContent>

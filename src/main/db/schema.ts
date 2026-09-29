@@ -51,6 +51,8 @@ export const appSettings = sqliteTable('app_settings', {
   telemetryOptIn: integer('telemetry_opt_in', { mode: 'boolean' }).notNull().default(false),
   crashReportingOptIn: integer('crash_reporting_opt_in', { mode: 'boolean' }).notNull().default(false),
   historyRetentionDays: integer('history_retention_days').notNull().default(90),
+  mp4HistoryLimit: integer('mp4_history_limit').notNull().default(20), // keep newest N MP4 scans; <= 0 keeps all
+  theme: text('theme', { enum: ['light', 'dark', 'system'] }).notNull().default('system'),
 });
 
 export const searchIndex = sqliteTable('search_index', {
@@ -97,4 +99,22 @@ export const fileTags = sqliteTable('file_tags', {
   fileId: text('file_id').notNull(), // Corresponds to search_index path/id or a hash, assuming path for now to match indexer
   tagId: text('tag_id').notNull(),
   createdAt: text('created_at').notNull(),
+});
+
+export const mp4Scans = sqliteTable('mp4_scans', {
+  id: text('id').primaryKey(),
+  targetPath: text('target_path').notNull(),
+  targetType: text('target_type', { enum: ['file', 'folder'] }).notNull(),
+  startedAt: text('started_at').notNull(),
+  finishedAt: text('finished_at').notNull(),
+  status: text('status', { enum: ['completed', 'cancelled'] }).notNull(),
+  filesFound: integer('files_found').notNull(),
+  filesScanned: integer('files_scanned').notNull(),
+  totalSize: integer('total_size').notNull(),
+  healthy: integer('healthy').notNull(),
+  corrupted: integer('corrupted').notNull(),
+  repairable: integer('repairable').notNull(),
+  unrecoverable: integer('unrecoverable').notNull(),
+  diff: text('diff', { mode: 'json' }), // Mp4ScanDiff | null (null = first scan of this target)
+  results: text('results', { mode: 'json' }).notNull(), // Mp4FileResult[] incl. errorLogs + atomStructure
 });

@@ -11,6 +11,8 @@ import {
   BatchRecord,
   HistoryFilter,
   IpcResponse,
+  TrashResult,
+  RevertSummary,
 } from './index';
 
 declare global {
@@ -19,6 +21,7 @@ declare global {
       organizer: {
         listFolder(path: string): Promise<IpcResponse<any[]>>;
         previewQuickRule(path: string, ruleId: string): Promise<IpcResponse<OrganizePreviewItem[]>>;
+        previewOrganizeByDate(path: string): Promise<IpcResponse<OrganizePreviewItem[]>>;
         previewSmartRule(path: string, rule: SmartRuleDefinition): Promise<IpcResponse<OrganizePreviewItem[]>>;
         applyOrganize(items: OrganizePreviewItem[]): Promise<IpcResponse<OrganizeResult>>;
         watchFolder(path: string, ruleSet: RuleSet): Promise<IpcResponse<{ watcherId: string }>>;
@@ -27,16 +30,17 @@ declare global {
       renamer: {
         previewRename(paths: string[], pattern: RenamePattern): Promise<IpcResponse<RenamePreviewItem[]>>;
         applyRename(items: RenamePreviewItem[]): Promise<IpcResponse<RenameResult>>;
-        undoRename(batchId: string): Promise<IpcResponse<void>>;
+        undoRename(batchId: string): Promise<IpcResponse<RevertSummary>>;
       };
       converter: {
-        enqueueConversion(paths: string[], preset: ConversionPreset): Promise<IpcResponse<{ jobId: string }>>;
+        listPresets(): Promise<IpcResponse<ConversionPreset[]>>;
+        enqueueConversion(paths: string[], presetId: string): Promise<IpcResponse<{ jobId: string }>>;
         cancelConversion(jobId: string): Promise<IpcResponse<void>>;
         onProgress(callback: (event: ConversionProgressEvent) => void): () => void;
       };
       history: {
         listBatches(filter?: HistoryFilter): Promise<IpcResponse<BatchRecord[]>>;
-        revertBatch(batchId: string): Promise<IpcResponse<void>>;
+        revertBatch(batchId: string): Promise<IpcResponse<RevertSummary>>;
       };
       settings: {
         get(): Promise<IpcResponse<any>>;
@@ -45,8 +49,9 @@ declare global {
       duplicates: {
         scan(dirPath: string): Promise<IpcResponse<void>>;
         cancel(): Promise<IpcResponse<void>>;
-        getGroups(): Promise<IpcResponse<any[]>>;
-        resolve(groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<void>>;
+        getGroups: () => Promise<IpcResponse<any[]>>;
+        clear: () => Promise<IpcResponse<void>>;
+        resolve: (groupId: string, keepPath: string, deletePaths: string[]) => Promise<IpcResponse<TrashResult>>;
         onProgress(callback: (data: any) => void): () => void;
       };
       dashboard: {
@@ -82,6 +87,5 @@ declare global {
       };
     };
     api: any;
-    electron: any;
   }
 }

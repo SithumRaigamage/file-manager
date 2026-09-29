@@ -37,6 +37,11 @@
 
 React 19 SPA rendered in Electron's renderer process; no server-side rendering needed. State managed via Zustand stores per domain (organizer, renamer, converter, history).
 
+Tool state must survive navigation. Routing goes through `KeepAliveRoutes` (`renderer/src/components/layout/KeepAliveRoutes.tsx`): each page mounts on first visit and then stays mounted, hidden while inactive, so component state, in-flight async work and IPC progress subscriptions all survive tab switches. Consequences for page code:
+- Never reset a store in a `useEffect` unmount cleanup; reset only on an explicit user action (e.g. starting a new scan).
+- Data that should refresh when the user returns to a page (history, dashboard stats, analytics) must load via `useTabActivated(cb)` from `renderer/src/lib/tab-activity.ts`, not a mount-only `useEffect` — kept-alive pages don't remount.
+- Main-process scans that stream progress over a shared channel (MP4 analyzer, duplicate finder, indexer) must let a new scan supersede the previous one and must drop progress from a superseded scan; otherwise two runs interleave and the progress bar jumps back and forth.
+
 ## Authentication
 
 Not applicable for MVP — FileFlow is a single-user local desktop app with no accounts. If cloud sync or license activation is added later (see RISKS.md monetization dependency), a lightweight local license-key validation would be introduced without a full auth/session system.
@@ -75,10 +80,23 @@ Desktop crash reporting (e.g., Electron's built-in crashReporter) — opt-in, su
 - Context-isolated IPC bridge (contextIsolation: true, nodeIntegration: false in renderer) — no direct Node.js access from untrusted renderer code.
 - All file-system and FFmpeg operations happen only in the main process, invoked via a narrow, explicit preload API surface (see API-CONTRACT.md for the IPC contract).
 - Input validation on all IPC payloads (file paths, rule definitions) before they reach file-system or child-process calls, to prevent path traversal or command injection into FFmpeg args.
+- Renderer runs with `sandbox: true`; the preload exposes only the typed `api` / `fileflow` objects (no generic `ipcRenderer`, no `process`). The window never navigates away from the bundled app, and `window.open` hands only `http(s)` URLs to the system browser.
+- FFmpeg arguments exist only in main-process allow-lists (`domain/converter/presets.ts`, `domain/mp4analyzer/repair.ts`). The renderer sends a preset or repair **id**; FFmpeg runs with `-n` (never overwrite) and a main-chosen unique output path.
+- `media://local/<encoded path>` streams only regular files whose real path (symlinks resolved) has an allow-listed audio/video type; no `bypassCSP`/CORS privileges.
+- `shell:openPath` refuses applications, installers, scripts, shortcuts and executable files (`domain/shared/open-policy.ts`); revealing in Finder/Explorer is always allowed.
+- Crash reports upload only to an HTTPS endpoint set via `FILEFLOW_CRASH_REPORT_URL`; otherwise dumps stay local.
+- Regression coverage: `tests/security.spec.ts` (launches the built app) — re-run whenever preload/IPC code changes.
 
 ## Scalability (Desktop Context)
 
 "Scalability" here means: handling large local batches (10,000+ files) without UI freeze or excessive memory use — achieved via streaming IPC updates, chunked file-list rendering (virtualized lists), and worker-limited FFmpeg concurrency rather than horizontal server scaling.
+
+Implementation notes (2026-09-29):
+- Whole-tree walks in the main process use `walkDirectoryAsync` (`domain/shared/directory-walker.ts`); the synchronous `walkDirectory` is only for bounded trees or worker threads. Large moves use `movePathAsync`.
+- High-frequency progress events are throttled to ≤ 10/s (`domain/shared/throttle.ts`).
+- Long result lists render progressively (`renderer/src/lib/use-progressive-list.ts`: 200 rows, more as the user scrolls) — chosen over per-layout virtualization because the Searcher has five different layouts (grids, list, table, tree).
+- Pages other than the Dashboard are code-split with `React.lazy` and load on first visit.
+- Fonts are bundled (`@fontsource/inter`); the renderer makes no network requests.
 
 ## Deployment
 
@@ -102,6 +120,7 @@ src/
       history/           (Undo/History Service — command/event architecture, see TECH-STACK.md)
       [future: duplicates/, search/, tagging/, ai/, plugins/, cloud/ — added per phase, same pattern]
     domain/              (pure business logic, no Electron/IPC imports — testable in isolation)
+      shared/            (cross-feature domain helpers — e.g. unique-path.ts conflict resolution, directory-walker.ts — used by organizer/renamer/converter/watcher/searcher/duplicates/search instead of each reimplementing them)
     ipc/                 (preload bridge + IPC handler registration only — thin layer over domain/features)
     scheduler/           (persistent job queue — see TECH-STACK.md, supports v2.1 Scheduled Tasks)
   renderer/

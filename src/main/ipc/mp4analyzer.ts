@@ -1,186 +1,60 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, IpcMainInvokeEvent } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as os from 'os'
 import { spawn, execFile, ChildProcess } from 'child_process'
 import { promisify } from 'util'
-import {
-  Mp4FileResult,
-  Mp4Metadata,
-  Mp4PlaybackVerification,
-  Mp4Recommendation,
-  CorruptionLevel
-} from '../../renderer/src/types/mp4analyzer'
+import { Mp4FileResult, Mp4Metadata, RepairId } from '../../renderer/src/types/mp4analyzer'
 
 const execFileAsync = promisify(execFile)
 
 // Track active child processes for cancellation
 const activeProcesses = new Set<ChildProcess>()
 let cancelRequested = false
+// Incremented by every new scan. A scan whose generation is no longer current
+// has been superseded: it must stop and must not emit progress, otherwise two
+// scans interleave on the shared progress channel and the bar jumps around.
+let scanGeneration = 0
 
-import { resolveFFmpegPath, resolveFFprobePath } from '../features/converter/ffmpeg-locator'
-
-interface Box {
-  type: string
-  size: number
-  offset: number
-  children?: Box[]
-}
-
-function parseSubBoxes(fd: number, startOffset: number, endOffset: number): Box[] {
-  const boxes: Box[] = []
-  let offset = startOffset
-  const buf = Buffer.alloc(8)
-
-  // Sub-box containers we care about parsing recursively
-  const containerTypes = ['moov', 'trak', 'mdia', 'minf', 'stbl']
-
-  while (offset < endOffset) {
-    if (endOffset - offset < 8) break
+function killActiveProcesses(): void {
+  for (const proc of activeProcesses) {
     try {
-      fs.readSync(fd, buf, 0, 8, offset)
-      let size = buf.readUInt32BE(0)
-      const type = buf.toString('ascii', 4, 8)
-
-      let boxHeaderSize = 8
-      if (size === 1) {
-        if (endOffset - offset < 16) break
-        const sizeBuf = Buffer.alloc(8)
-        fs.readSync(fd, sizeBuf, 0, 8, offset + 8)
-        const hi = sizeBuf.readUInt32BE(0)
-        const lo = sizeBuf.readUInt32BE(4)
-        size = hi * 4294967296 + lo
-        boxHeaderSize = 16
-      } else if (size === 0) {
-        size = endOffset - offset
-      }
-
-      if (size <= 0 || offset + size > endOffset) {
-        break
-      }
-
-      // Check if type looks like standard ASCII alphanumeric
-      if (/^[a-zA-Z0-9 ]{4}$/.test(type)) {
-        const box: Box = { type, size, offset }
-        if (containerTypes.includes(type)) {
-          box.children = parseSubBoxes(fd, offset + boxHeaderSize, offset + size)
-        }
-        boxes.push(box)
-      } else {
-        break
-      }
-
-      offset += size
-    } catch {
-      break
-    }
-  }
-  return boxes
-}
-
-function parseRootBoxes(filePath: string): { boxes: Box[]; error?: string } {
-  const boxes: Box[] = []
-  let fd: number
-  try {
-    fd = fs.openSync(filePath, 'r')
-  } catch (err) {
-    return { boxes, error: (err as Error).message }
-  }
-
-  try {
-    const stats = fs.fstatSync(fd)
-    const fileSize = stats.size
-    let offset = 0
-    const buf = Buffer.alloc(8)
-
-    while (offset < fileSize) {
-      if (fileSize - offset < 8) break
-      fs.readSync(fd, buf, 0, 8, offset)
-      let size = buf.readUInt32BE(0)
-      const type = buf.toString('ascii', 4, 8)
-
-      let boxHeaderSize = 8
-      if (size === 1) {
-        if (fileSize - offset < 16) break
-        const sizeBuf = Buffer.alloc(8)
-        fs.readSync(fd, sizeBuf, 0, 8, offset + 8)
-        const hi = sizeBuf.readUInt32BE(0)
-        const lo = sizeBuf.readUInt32BE(4)
-        size = hi * 4294967296 + lo
-        boxHeaderSize = 16
-      } else if (size === 0) {
-        size = fileSize - offset
-      }
-
-      if (size <= 0 || offset + size > fileSize) {
-        break
-      }
-
-      if (/^[a-zA-Z0-9 ]{4}$/.test(type)) {
-        const box: Box = { type, size, offset }
-        if (['moov', 'trak'].includes(type)) {
-          box.children = parseSubBoxes(fd, offset + boxHeaderSize, offset + size)
-        }
-        boxes.push(box)
-      } else {
-        // Stop if we encounter non-standard box headers to prevent infinite parsing
-        break
-      }
-
-      offset += size
-    }
-    return { boxes }
-  } catch (err) {
-    return { boxes, error: (err as Error).message }
-  } finally {
-    try {
-      fs.closeSync(fd)
+      proc.kill()
     } catch {
       // ignore
     }
   }
+  activeProcesses.clear()
 }
 
-function flattenBoxes(boxes: Box[], prefix = ''): string[] {
-  const result: string[] = []
-  for (const box of boxes) {
-    const name = prefix ? `${prefix}/${box.type}` : box.type
-    result.push(name)
-    if (box.children) {
-      result.push(...flattenBoxes(box.children, name))
-    }
-  }
-  return result
-}
-
-function checkBasicFile(filePath: string): { valid: boolean; size: number; errorMsg?: string } {
+// History is best-effort: a failed save must never fail the scan itself
+function recordScan(input: SaveMp4ScanInput): void {
   try {
-    if (!fs.existsSync(filePath)) {
-      return { valid: false, size: 0, errorMsg: 'File does not exist' }
-    }
-    const stats = fs.statSync(filePath)
-    if (!stats.isFile()) {
-      return { valid: false, size: 0, errorMsg: 'Not a regular file' }
-    }
-    if (stats.size === 0) {
-      return { valid: false, size: 0, errorMsg: 'File size is 0 bytes' }
-    }
-    const ext = path.extname(filePath).toLowerCase()
-    if (ext !== '.mp4') {
-      return { valid: false, size: stats.size, errorMsg: 'File extension is not .mp4' }
-    }
-    // Check read permission
-    fs.accessSync(filePath, fs.constants.R_OK)
-    return { valid: true, size: stats.size }
-  } catch (err) {
-    return {
-      valid: false,
-      size: 0,
-      errorMsg: `Read permissions unavailable: ${(err as Error).message}`
-    }
+    saveMp4Scan(input)
+  } catch (error) {
+    console.error('Failed to save MP4 scan history:', error)
   }
 }
+
+function beginScan(): number {
+  killActiveProcesses()
+  cancelRequested = false
+  return ++scanGeneration
+}
+
+import { resolveFFmpegPath, resolveFFprobePath } from '../features/converter/ffmpeg-locator'
+import { saveMp4Scan, listMp4Scans, getMp4Scan, SaveMp4ScanInput } from '../db/mp4-scan-repo'
+import { moveToTrash, TrashResult } from '../features/shared/trash'
+import type { IpcResponse } from './ipc-response'
+import { confirmDestructive, summarizePaths } from '../features/shared/confirm-dialog'
+import { analyzeMp4File, StreamAnalyzer } from '../domain/mp4analyzer/file-analyzer'
+import { checkBasicFile } from '../domain/mp4analyzer/diagnosis'
+import { findMp4Files } from '../domain/mp4analyzer/find-mp4-files'
+import { isRepairId, buildRepairArgs, repairOutputPath } from '../domain/mp4analyzer/repair'
+import { resolveUniquePath } from '../domain/shared/unique-path'
+import { csvRow } from '../domain/shared/csv'
+import { ffmpegProgressPercent } from '../domain/shared/ffmpeg-progress'
+import type { IntegrityCheckResult } from '../domain/mp4analyzer/diagnosis'
 
 async function runFFprobeAnalysis(
   filePath: string,
@@ -235,13 +109,7 @@ function runFFmpegIntegrityCheck(
   ffmpegPath: string,
   totalDuration: number,
   onProgress: (progress: number) => void
-): Promise<{
-  errorCount: number
-  warningCount: number
-  decodableFrames: number
-  totalFrames: number
-  errorLogs: string[]
-}> {
+): Promise<IntegrityCheckResult> {
   return new Promise((resolve) => {
     // Limit integrity check to the first 30 seconds of video to speed up scans by 10-100x.
     // Truncations and container defects are already caught by the binary atom box parser.
@@ -273,8 +141,9 @@ function runFFmpegIntegrityCheck(
     proc.stderr.on('data', (data: Buffer) => {
       const text = data.toString()
 
-      // Look for error/warning indicators
-      const lines = text.split('\n')
+      // Look for error/warning indicators. FFmpeg rewrites its stats line in
+      // place using '\r', so split on both or the first (stale) time= wins.
+      const lines = text.split(/[\r\n]+/)
       for (const line of lines) {
         if (!line.trim()) continue
 
@@ -365,315 +234,74 @@ function runFFmpegIntegrityCheck(
   })
 }
 
-function determineCorruption(
-  basicVal: string,
-  containerVal: string,
-  _errorCount: number,
-  healthScore: number
-): CorruptionLevel {
-  if (basicVal === 'invalid' || containerVal === 'corrupted') {
-    return 'unrecoverable'
-  }
-  if (healthScore < 70) {
-    return 'severe'
-  }
-  if (healthScore >= 70 && healthScore < 90) {
-    return 'moderate'
-  }
-  if (healthScore >= 90 && healthScore < 98) {
-    return 'minor'
-  }
-  return 'healthy'
-}
-
-function getRecommendation(
-  corruptionLevel: CorruptionLevel,
-  containerVal: string,
-  filePath: string
-): Mp4Recommendation {
-  if (corruptionLevel === 'healthy') {
-    return { action: 'No repair needed. File is fully functional.', confidence: 'high' }
-  }
-
-  const baseName = path.basename(filePath, path.extname(filePath))
-  const dirName = path.dirname(filePath)
-  const repairedPath = path.join(dirName, `${baseName}_repaired.mp4`)
-
-  if (containerVal === 'corrupted') {
+/** Binds the FFprobe/FFmpeg runners to the resolved binaries; null if FFmpeg isn't installed. */
+async function createStreamAnalyzer(): Promise<StreamAnalyzer | null> {
+  try {
+    const ffprobePath = await resolveFFprobePath()
+    const ffmpegPath = await resolveFFmpegPath()
     return {
-      action:
-        'Rebuild MOOV atom. The container is missing metadata headers. Try using FFmpeg to copy streams, which sometimes re-generates the container headers.',
-      confidence: 'medium',
-      command: `ffmpeg -i "${filePath}" -c copy -map 0 "${repairedPath}"`
+      probe: (filePath) => runFFprobeAnalysis(filePath, ffprobePath),
+      checkIntegrity: (filePath, duration, onProgress) =>
+        runFFmpegIntegrityCheck(filePath, ffmpegPath, duration, onProgress)
     }
+  } catch {
+    return null
   }
-
-  if (containerVal === 'warning') {
-    return {
-      action:
-        'Fast-start optimize. Move the MOOV atom to the beginning of the file for web optimization.',
-      confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c copy -movflags +faststart "${repairedPath}"`
-    }
-  }
-
-  if (corruptionLevel === 'minor' || corruptionLevel === 'moderate') {
-    return {
-      action:
-        'Re-encode video stream. Minor stream corruption detected. Re-encoding will clean up broken reference frames.',
-      confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c:v libx264 -crf 23 -preset medium -c:a aac "${repairedPath}"`
-    }
-  }
-
-  // Severe
-  return {
-    action:
-      'Full stream rebuild. Severe frame corruption detected. Try forcing keyframe recovery or re-encoding with stream copying.',
-    confidence: 'low',
-    command: `ffmpeg -err_detect ignore_err -i "${filePath}" -c:v libx264 -crf 28 -preset fast "${repairedPath}"`
-  }
-}
-
-async function scanDirectory(dirPath: string): Promise<string[]> {
-  const results: string[] = []
-  const files = await fs.promises.readdir(dirPath, { withFileTypes: true })
-  for (const file of files) {
-    const fullPath = path.join(dirPath, file.name)
-    if (file.isDirectory()) {
-      results.push(...(await scanDirectory(fullPath)))
-    } else if (file.isFile() && file.name.toLowerCase().endsWith('.mp4')) {
-      results.push(fullPath)
-    }
-  }
-  return results
-}
-
-function isSafeToDeleteFolder(folderPath: string): boolean {
-  const normalized = path.normalize(folderPath).toLowerCase().replace(/\\/g, '/')
-  const homeDir = os.homedir().toLowerCase().replace(/\\/g, '/')
-
-  // Define absolute directories that should NEVER be deleted
-  const systemDirs = [
-    '/',
-    '/users',
-    '/users/',
-    homeDir,
-    path.join(homeDir, 'desktop').toLowerCase().replace(/\\/g, '/'),
-    path.join(homeDir, 'downloads').toLowerCase().replace(/\\/g, '/'),
-    path.join(homeDir, 'documents').toLowerCase().replace(/\\/g, '/'),
-    path.join(homeDir, 'pictures').toLowerCase().replace(/\\/g, '/'),
-    path.join(homeDir, 'music').toLowerCase().replace(/\\/g, '/'),
-    path.join(homeDir, 'movies').toLowerCase().replace(/\\/g, '/'),
-    '/applications',
-    '/system',
-    '/library'
-  ]
-
-  if (systemDirs.includes(normalized) || systemDirs.includes(normalized + '/')) {
-    return false
-  }
-
-  // Do not delete workspace folder or any of its parents
-  const workspacePath = '/users/sithumraigamage/projects/file manager'.toLowerCase()
-  if (workspacePath.startsWith(normalized)) {
-    return false
-  }
-
-  return true
 }
 
 export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFile',
     async (event, filePath: string): Promise<Mp4FileResult> => {
-      cancelRequested = false
-      const basic = checkBasicFile(filePath)
-      const fileName = path.basename(filePath)
-
-      if (!basic.valid) {
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'invalid',
-          containerValidation: 'corrupted',
-          ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: 'unrecoverable',
-          recommendation: { action: basic.errorMsg || 'Basic check failed', confidence: 'low' },
-          errorMsg: basic.errorMsg
-        }
+      const startedAt = new Date().toISOString()
+      const generation = beginScan()
+      const streams = await createStreamAnalyzer()
+      const result = await analyzeMp4File(filePath, streams, (p) => {
+        // Stream single-file scanning progress
+        if (generation !== scanGeneration) return
+        event.sender.send('mp4analyzer:progress', {
+          scanned: p,
+          total: 100,
+          currentFile: path.basename(filePath)
+        })
+      })
+      // Superseded scans are not recorded in history
+      if (generation === scanGeneration) {
+        recordScan({
+          targetPath: filePath,
+          targetType: 'file',
+          startedAt,
+          status: cancelRequested ? 'cancelled' : 'completed',
+          filesFound: 1,
+          results: [result]
+        })
       }
-
-      // MP4 Container check
-      const containerCheck = parseRootBoxes(filePath)
-      const flattened = flattenBoxes(containerCheck.boxes)
-
-      let containerValidation: 'healthy' | 'warning' | 'corrupted' = 'healthy'
-      if (containerCheck.error || !flattened.includes('moov') || !flattened.includes('ftyp')) {
-        containerValidation = 'corrupted'
-      } else {
-        // Warning if moov atom appears after mdat (non-faststart)
-        const mdatIdx = flattened.findIndex((t) => t.endsWith('mdat'))
-        const moovIdx = flattened.findIndex((t) => t.endsWith('moov'))
-        if (moovIdx !== -1 && mdatIdx !== -1 && moovIdx > mdatIdx) {
-          containerValidation = 'warning'
-        }
-      }
-
-      if (containerValidation === 'corrupted') {
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation: 'corrupted',
-          ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: 'unrecoverable',
-          recommendation: getRecommendation('unrecoverable', 'corrupted', filePath),
-          errorMsg: 'Missing or corrupted essential atoms (moov / ftyp)',
-          atomStructure: flattened
-        }
-      }
-
-      // Check FFmpeg & FFprobe
-      let ffprobePath = ''
-      let ffmpegPath = ''
-      try {
-        ffprobePath = await resolveFFprobePath()
-        ffmpegPath = await resolveFFmpegPath()
-      } catch {
-        // Return partial checks if FFmpeg is not found
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation,
-          ffmpegValidation: {
-            errorCount: 0,
-            warningCount: 0,
-            severity: containerValidation === 'warning' ? 'minor' : 'healthy'
-          },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: containerValidation === 'warning' ? 'minor' : 'healthy',
-          recommendation: {
-            action:
-              'FFmpeg/FFprobe not available on host. Stream scans skipped. ' +
-              (containerValidation === 'warning'
-                ? 'Container warning detected.'
-                : 'Container is structurally healthy.'),
-            confidence: 'medium'
-          },
-          errorMsg: 'FFmpeg/FFprobe missing. Comprehensive frame analysis skipped.',
-          atomStructure: flattened
-        }
-      }
-
-      // Metadata analysis
-      const metadata = await runFFprobeAnalysis(filePath, ffprobePath)
-      let playbackVerification: Mp4PlaybackVerification | null = null
-      let errorCount = 0
-      let warningCount = 0
-      let errorLogs: string[] = []
-
-      if (metadata && metadata.duration > 0) {
-        const integrity = await runFFmpegIntegrityCheck(
-          filePath,
-          ffmpegPath,
-          metadata.duration,
-          (p) => {
-            // Stream single-file scanning progress
-            event.sender.send('mp4analyzer:progress', {
-              scanned: p,
-              total: 100,
-              currentFile: fileName
-            })
-          }
-        )
-
-        errorCount = integrity.errorCount
-        warningCount = integrity.warningCount
-        errorLogs = integrity.errorLogs
-
-        const score =
-          integrity.totalFrames > 0
-            ? Math.round((integrity.decodableFrames / integrity.totalFrames) * 1000) / 10
-            : 100
-
-        playbackVerification = {
-          totalFrames: integrity.totalFrames,
-          decodableFrames: integrity.decodableFrames,
-          corruptedFrames: integrity.totalFrames - integrity.decodableFrames,
-          healthScore: score
-        }
-      } else {
-        playbackVerification = {
-          totalFrames: 0,
-          decodableFrames: 0,
-          corruptedFrames: 0,
-          healthScore: 0
-        }
-      }
-
-      const health = playbackVerification ? playbackVerification.healthScore : 100
-      const corruptionLevel = determineCorruption('valid', containerValidation, errorCount, health)
-      const recommendation = getRecommendation(corruptionLevel, containerValidation, filePath)
-
-      return {
-        filePath,
-        fileName,
-        fileSize: basic.size,
-        basicValidation: 'valid',
-        containerValidation,
-        ffmpegValidation: {
-          errorCount,
-          warningCount,
-          severity: corruptionLevel
-        },
-        metadata,
-        playbackVerification,
-        corruptionLevel,
-        recommendation,
-        atomStructure: flattened,
-        errorLogs
-      }
+      return result
     }
   )
 
   ipcMain.handle(
     'mp4analyzer:analyzeFolder',
     async (event, folderPath: string): Promise<Mp4FileResult[]> => {
-      cancelRequested = false
+      const startedAt = new Date().toISOString()
+      const generation = beginScan()
+      const isCurrent = (): boolean => generation === scanGeneration
       const results: Mp4FileResult[] = []
 
-      let files: string[] = []
-      try {
-        files = await scanDirectory(folderPath)
-      } catch (err) {
-        console.error(err)
-        return []
+      // An unreadable root throws FolderNotReadableError, whose message tells the
+      // user how to grant access; unreadable subfolders are skipped and reported.
+      const { files, unreadable } = await findMp4Files(folderPath)
+      if (unreadable.length > 0) {
+        event.sender.send('mp4analyzer:skippedFolders', unreadable)
       }
 
       const total = files.length
       if (total === 0) return []
 
-      let ffprobePath = ''
-      let ffmpegPath = ''
-      try {
-        ffprobePath = await resolveFFprobePath()
-        ffmpegPath = await resolveFFmpegPath()
-      } catch {
-        // Ignored, fallback handling matches analyzeFile
-      }
+      const streams = await createStreamAnalyzer()
 
       for (let i = 0; i < total; i++) {
-        if (cancelRequested) {
+        if (cancelRequested || !isCurrent()) {
           break
         }
 
@@ -687,150 +315,21 @@ export function registerMp4AnalyzerHandlers(): void {
           currentFile: fileName
         })
 
-        // Run check inside folder scanner
-        const basic = checkBasicFile(filePath)
-        if (!basic.valid) {
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'invalid',
-            containerValidation: 'corrupted',
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel: 'unrecoverable',
-            recommendation: { action: basic.errorMsg || 'Basic check failed', confidence: 'low' },
-            errorMsg: basic.errorMsg
+        results.push(
+          await analyzeMp4File(filePath, streams, (p) => {
+            // Send sub-progress for current file scan
+            if (!isCurrent()) return
+            event.sender.send('mp4analyzer:progress', {
+              scanned: i + p / 100,
+              total,
+              currentFile: fileName
+            })
           })
-          continue
-        }
-
-        const containerCheck = parseRootBoxes(filePath)
-        const flattened = flattenBoxes(containerCheck.boxes)
-
-        let containerValidation: 'healthy' | 'warning' | 'corrupted' = 'healthy'
-        if (containerCheck.error || !flattened.includes('moov') || !flattened.includes('ftyp')) {
-          containerValidation = 'corrupted'
-        } else {
-          const mdatIdx = flattened.findIndex((t) => t.endsWith('mdat'))
-          const moovIdx = flattened.findIndex((t) => t.endsWith('moov'))
-          if (moovIdx !== -1 && mdatIdx !== -1 && moovIdx > mdatIdx) {
-            containerValidation = 'warning'
-          }
-        }
-
-        if (containerValidation === 'corrupted') {
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'valid',
-            containerValidation: 'corrupted',
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel: 'unrecoverable',
-            recommendation: getRecommendation('unrecoverable', 'corrupted', filePath),
-            errorMsg: 'Missing essential MP4 atoms',
-            atomStructure: flattened
-          })
-          continue
-        }
-
-        if (!ffprobePath || !ffmpegPath) {
-          const corruptionLevel = containerValidation === 'warning' ? 'minor' : 'healthy'
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'valid',
-            containerValidation,
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: corruptionLevel },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel,
-            recommendation: {
-              action: 'FFmpeg/FFprobe missing. Comprehensive frame analysis skipped.',
-              confidence: 'medium'
-            },
-            atomStructure: flattened
-          })
-          continue
-        }
-
-        const metadata = await runFFprobeAnalysis(filePath, ffprobePath)
-        let playbackVerification: Mp4PlaybackVerification | null = null
-        let errorCount = 0
-        let warningCount = 0
-        let errorLogs: string[] = []
-
-        if (metadata && metadata.duration > 0) {
-          const integrity = await runFFmpegIntegrityCheck(
-            filePath,
-            ffmpegPath,
-            metadata.duration,
-            (p) => {
-              // Send sub-progress for current file scan
-              event.sender.send('mp4analyzer:progress', {
-                scanned: i + p / 100,
-                total,
-                currentFile: fileName
-              })
-            }
-          )
-          errorCount = integrity.errorCount
-          warningCount = integrity.warningCount
-          errorLogs = integrity.errorLogs
-
-          const score =
-            integrity.totalFrames > 0
-              ? Math.round((integrity.decodableFrames / integrity.totalFrames) * 1000) / 10
-              : 100
-
-          playbackVerification = {
-            totalFrames: integrity.totalFrames,
-            decodableFrames: integrity.decodableFrames,
-            corruptedFrames: integrity.totalFrames - integrity.decodableFrames,
-            healthScore: score
-          }
-        } else {
-          playbackVerification = {
-            totalFrames: 0,
-            decodableFrames: 0,
-            corruptedFrames: 0,
-            healthScore: 0
-          }
-        }
-
-        const health = playbackVerification ? playbackVerification.healthScore : 100
-        const corruptionLevel = determineCorruption(
-          'valid',
-          containerValidation,
-          errorCount,
-          health
         )
-        const recommendation = getRecommendation(corruptionLevel, containerValidation, filePath)
-
-        results.push({
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation,
-          ffmpegValidation: {
-            errorCount,
-            warningCount,
-            severity: corruptionLevel
-          },
-          metadata,
-          playbackVerification,
-          corruptionLevel,
-          recommendation,
-          atomStructure: flattened,
-          errorLogs
-        })
       }
+
+      // A superseded scan must not overwrite the newer scan's progress
+      if (!isCurrent()) return results
 
       // Final progress state
       event.sender.send('mp4analyzer:progress', {
@@ -839,51 +338,93 @@ export function registerMp4AnalyzerHandlers(): void {
         currentFile: 'Scan complete'
       })
 
+      recordScan({
+        targetPath: folderPath,
+        targetType: 'folder',
+        startedAt,
+        status: cancelRequested ? 'cancelled' : 'completed',
+        filesFound: total,
+        results
+      })
+
       return results
     }
   )
 
-  ipcMain.handle('mp4analyzer:cancel', () => {
-    cancelRequested = true
-    for (const proc of activeProcesses) {
-      try {
-        proc.kill()
-      } catch {
-        // ignore
+  ipcMain.handle('mp4analyzer:listScans', () => {
+    try {
+      return { ok: true, data: listMp4Scans() }
+    } catch (error) {
+      return {
+        ok: false,
+        error: { code: 'HISTORY_LIST_FAILED', message: (error as Error).message }
       }
     }
-    activeProcesses.clear()
+  })
+
+  ipcMain.handle('mp4analyzer:getScan', (_event, id: string) => {
+    try {
+      const scan = getMp4Scan(id)
+      if (!scan) {
+        return {
+          ok: false,
+          error: { code: 'SCAN_NOT_FOUND', message: 'This scan is no longer in history' }
+        }
+      }
+      // Flag files moved or deleted since the scan; computed now, never stored
+      const results = scan.results.map((r) => ({ ...r, missingOnDisk: !fs.existsSync(r.filePath) }))
+      return { ok: true, data: { ...scan, results } }
+    } catch (error) {
+      return { ok: false, error: { code: 'HISTORY_GET_FAILED', message: (error as Error).message } }
+    }
+  })
+
+  ipcMain.handle('mp4analyzer:cancel', () => {
+    cancelRequested = true
+    killActiveProcesses()
     return true
   })
 
+  // The renderer sends which repair to run (an allow-listed id), never a command.
+  // Input is validated here and the output path is chosen here, never overwriting.
   ipcMain.handle(
     'mp4analyzer:runRepair',
     async (
       event,
       filePath: string,
-      command: string
+      repairId: RepairId
     ): Promise<{ success: boolean; repairedPath: string; error?: string }> => {
+      if (!isRepairId(repairId)) {
+        return { success: false, repairedPath: '', error: 'Unknown repair type' }
+      }
+      const basic = typeof filePath === 'string' ? checkBasicFile(filePath) : null
+      if (!basic?.valid) {
+        return { success: false, repairedPath: '', error: basic?.errorMsg ?? 'Invalid file' }
+      }
+
       try {
         const ffmpegPath = await resolveFFmpegPath()
-        const adjustedCommand = command.replace(/^ffmpeg /, `"${ffmpegPath}" `)
-        const match = adjustedCommand.match(/"([^"]+)"\s*$/)
-        const repairedPath = match ? match[1] : filePath.replace('.mp4', '_repaired.mp4')
+        const repairedPath = resolveUniquePath(repairOutputPath(filePath))
+        const args = buildRepairArgs(repairId, filePath, repairedPath)
+        // Duration lets progress be reported as a real percentage
+        const durationSeconds = await resolveFFprobePath()
+          .then((probe) => runFFprobeAnalysis(filePath, probe))
+          .then((meta) => meta?.duration ?? 0)
+          .catch(() => 0)
 
-        return new Promise((resolve) => {
-          const proc = spawn(adjustedCommand, { shell: true })
+        return await new Promise((resolve) => {
+          const proc = spawn(ffmpegPath, args)
           activeProcesses.add(proc)
 
           let stderr = ''
+          let lastProgress = -1
           proc.stderr.on('data', (data: Buffer) => {
             const text = data.toString()
             stderr += text
-
-            const timeMatch = text.match(/time=(\s*\d+:\d+:\d+\.\d+|\s*\d+:\d+:\d+)/)
-            if (timeMatch) {
-              event.sender.send('mp4analyzer:repairProgress', {
-                filePath,
-                progress: 50
-              })
+            const progress = ffmpegProgressPercent(text, durationSeconds)
+            if (progress !== null && progress > lastProgress) {
+              lastProgress = progress
+              event.sender.send('mp4analyzer:repairProgress', { filePath, progress })
             }
           })
 
@@ -903,7 +444,7 @@ export function registerMp4AnalyzerHandlers(): void {
           })
         })
       } catch (err) {
-        return { success: false, repairedPath: filePath, error: (err as Error).message }
+        return { success: false, repairedPath: '', error: (err as Error).message }
       }
     }
   )
@@ -919,23 +460,36 @@ export function registerMp4AnalyzerHandlers(): void {
 
       if (saveResult.canceled || !saveResult.filePath) return false
 
-      const headers =
-        'File Name,Path,Size (Bytes),Duration (s),Resolution,Codec,Status,Health %,Errors,Recommendation\n'
-      const rows = results
-        .map((r) => {
-          const size = r.fileSize
-          const dur = r.metadata?.duration || 0
-          const res = r.metadata?.resolution || 'N/A'
-          const cod = r.metadata?.codec || 'N/A'
-          const health = r.playbackVerification?.healthScore || 100
-          const errs = r.ffmpegValidation.errorCount
-          const rec = r.recommendation.action.replace(/"/g, '""')
-          return `"${r.fileName}","${r.filePath}",${size},${dur},"${res}","${cod}","${r.corruptionLevel}",${health},${errs},"${rec}"`
-        })
-        .join('\n')
+      const header = csvRow([
+        'File Name',
+        'Path',
+        'Size (Bytes)',
+        'Duration (s)',
+        'Resolution',
+        'Codec',
+        'Status',
+        'Health %',
+        'Errors',
+        'Recommendation'
+      ])
+      const rows = results.map((r) =>
+        csvRow([
+          r.fileName,
+          r.filePath,
+          r.fileSize,
+          r.metadata?.duration ?? 0,
+          r.metadata?.resolution ?? 'N/A',
+          r.metadata?.codec ?? 'N/A',
+          r.corruptionLevel,
+          r.corruptionLevel === 'unrecoverable' ? 0 : (r.playbackVerification?.healthScore ?? 100),
+          r.ffmpegValidation.errorCount,
+          r.recommendation.action
+        ])
+      )
+      const csv = [header, ...rows].join('\n')
 
       try {
-        fs.writeFileSync(saveResult.filePath, headers + rows, 'utf-8')
+        fs.writeFileSync(saveResult.filePath, csv, 'utf-8')
         return true
       } catch (err) {
         console.error(err)
@@ -965,189 +519,41 @@ export function registerMp4AnalyzerHandlers(): void {
     }
   )
 
-  ipcMain.handle(
-    'mp4analyzer:deleteFile',
-    async (
-      event,
-      filePath: string
-    ): Promise<{
-      success: boolean
-      action: 'none' | 'file' | 'folder'
-      filePath: string
-      folderPath: string
-    }> => {
-      const folderPath = path.dirname(filePath)
-      try {
-        if (!fs.existsSync(filePath)) {
-          return { success: false, action: 'none', filePath, folderPath }
-        }
-
-        const fileName = path.basename(filePath)
-        const folderName = path.basename(folderPath)
-        const browserWindow = BrowserWindow.fromWebContents(event.sender)
-
-        const parentSafeToDelete = isSafeToDeleteFolder(folderPath)
-
-        const buttons = ['Cancel', 'Delete File Only']
-        if (parentSafeToDelete) {
-          buttons.push('Delete File & Folder')
-        }
-
-        const response = await dialog.showMessageBox(browserWindow!, {
-          type: 'warning',
-          buttons,
-          defaultId: 1,
-          cancelId: 0,
-          title: 'Delete Corrupted Video',
-          message: `Are you sure you want to delete "${fileName}"?`,
-          detail: parentSafeToDelete
-            ? `You can delete just this video file, or delete its entire containing folder "${folderName}" (WARNING: this will permanently delete all contents inside "${folderName}").`
-            : `This will permanently delete the file from your disk.`
-        })
-
-        if (response.response === 1) {
-          // Delete File Only
-          fs.unlinkSync(filePath)
-          return { success: true, action: 'file', filePath, folderPath }
-        } else if (response.response === 2 && parentSafeToDelete) {
-          // Delete File & Folder
-          fs.rmSync(folderPath, { recursive: true, force: true })
-          return { success: true, action: 'folder', filePath, folderPath }
-        }
-
-        return { success: false, action: 'none', filePath, folderPath }
-      } catch (err) {
-        console.error('Failed to delete file/folder:', err)
-        throw err
+  // Corrupted videos are moved to the OS Trash (recoverable), never unlinked,
+  // and only ever as individual files — never their containing folders.
+  const trashVideos = async (
+    event: IpcMainInvokeEvent,
+    filePaths: string[]
+  ): Promise<IpcResponse<TrashResult>> => {
+    try {
+      const existing = [...new Set(filePaths)].filter((p) => fs.existsSync(p))
+      if (existing.length === 0) {
+        return { ok: false, error: { code: 'NOT_FOUND', message: 'No files found to remove' } }
       }
+
+      const names = existing.map((p) => path.basename(p))
+      const confirmed = await confirmDestructive(event.sender, {
+        title: 'Move Corrupted Videos to Trash',
+        message:
+          existing.length === 1
+            ? `Move "${names[0]}" to the Trash?`
+            : `Move ${existing.length} corrupted videos to the Trash?`,
+        detail: `${summarizePaths(names)}\n\nOnly these files are affected. You can restore them from the Trash.`,
+        confirmLabel: 'Move to Trash'
+      })
+      if (!confirmed) return { ok: true, data: { trashed: [], failed: [] } }
+
+      return { ok: true, data: await moveToTrash(existing) }
+    } catch (err) {
+      return { ok: false, error: { code: 'TRASH_FAILED', message: (err as Error).message } }
     }
+  }
+
+  ipcMain.handle('mp4analyzer:deleteFile', (event, filePath: string) =>
+    trashVideos(event, [filePath])
   )
 
-  ipcMain.handle(
-    'mp4analyzer:deleteMultipleFiles',
-    async (
-      event,
-      filePaths: string[],
-      scannedFolder: string | null
-    ): Promise<{ success: boolean; deletedFiles: string[]; deletedFolders: string[] }> => {
-      try {
-        const browserWindow = BrowserWindow.fromWebContents(event.sender)
-
-        const filesToDelete = new Set<string>()
-        const foldersToDelete = new Set<string>()
-
-        for (const filePath of filePaths) {
-          if (!fs.existsSync(filePath)) {
-            continue
-          }
-
-          if (scannedFolder) {
-            const fileFolder = path.dirname(filePath)
-            const normFileFolder = path.resolve(path.normalize(fileFolder))
-            const normScanned = path.resolve(path.normalize(scannedFolder))
-
-            if (normFileFolder === normScanned) {
-              // Directly under scanned folder -> delete file only
-              filesToDelete.add(filePath)
-            } else {
-              // Inside a subfolder -> check if it is indeed a descendant of scanned folder and safe
-              const relative = path.relative(normScanned, normFileFolder)
-              const isSubfolder =
-                relative && !relative.startsWith('..') && !path.isAbsolute(relative)
-
-              if (isSubfolder && isSafeToDeleteFolder(fileFolder)) {
-                foldersToDelete.add(fileFolder)
-              } else {
-                // Fallback to file deletion if folder deletion is unsafe or not a subfolder
-                filesToDelete.add(filePath)
-              }
-            }
-          } else {
-            // No scanned folder (single file scan) -> delete file only
-            filesToDelete.add(filePath)
-          }
-        }
-
-        // Clean up filesToDelete that are inside any folder in foldersToDelete
-        for (const file of Array.from(filesToDelete)) {
-          const fileFolder = path.dirname(file)
-          const normFileFolder = path.resolve(path.normalize(fileFolder))
-          for (const folder of foldersToDelete) {
-            const resolvedFolder = path.resolve(path.normalize(folder))
-            const relative = path.relative(resolvedFolder, normFileFolder)
-            const isInside =
-              normFileFolder === resolvedFolder ||
-              (relative && !relative.startsWith('..') && !path.isAbsolute(relative))
-            if (isInside) {
-              filesToDelete.delete(file)
-              break
-            }
-          }
-        }
-
-        const totalFilesCount = filesToDelete.size
-        const totalFoldersCount = foldersToDelete.size
-
-        if (totalFilesCount === 0 && totalFoldersCount === 0) {
-          return { success: false, deletedFiles: [], deletedFolders: [] }
-        }
-
-        // Construct details message
-        let details = 'This will permanently delete:\n'
-        if (totalFilesCount > 0) {
-          details += `- ${totalFilesCount} corrupted video file(s)\n`
-        }
-        if (totalFoldersCount > 0) {
-          details += `- ${totalFoldersCount} subfolder(s) (WARNING: this will permanently delete all contents inside these folders)\n`
-        }
-        details += '\nThis action cannot be undone.'
-
-        const response = await dialog.showMessageBox(browserWindow!, {
-          type: 'warning',
-          buttons: ['Cancel', 'Delete All'],
-          defaultId: 1,
-          cancelId: 0,
-          title: 'Delete All Corrupted Videos',
-          message: `Are you sure you want to delete these ${totalFilesCount + totalFoldersCount} item(s)?`,
-          detail: details
-        })
-
-        if (response.response === 1) {
-          const deletedFiles: string[] = []
-          const deletedFolders: string[] = []
-
-          // 1. Delete folders first (this will also delete the files inside them)
-          for (const folder of foldersToDelete) {
-            try {
-              if (fs.existsSync(folder)) {
-                fs.rmSync(folder, { recursive: true, force: true })
-                deletedFolders.push(folder)
-              }
-            } catch (err) {
-              console.error(`Failed to delete folder ${folder}:`, err)
-            }
-          }
-
-          // 2. Delete files
-          for (const file of filesToDelete) {
-            try {
-              if (fs.existsSync(file)) {
-                fs.unlinkSync(file)
-                deletedFiles.push(file)
-              }
-            } catch (err) {
-              console.error(`Failed to delete file ${file}:`, err)
-            }
-          }
-
-          return { success: true, deletedFiles, deletedFolders }
-        }
-
-        return { success: false, deletedFiles: [], deletedFolders: [] }
-      } catch (err) {
-        console.error('Failed to perform bulk deletion:', err)
-        throw err
-      }
-    }
+  ipcMain.handle('mp4analyzer:deleteMultipleFiles', (event, filePaths: string[]) =>
+    trashVideos(event, Array.isArray(filePaths) ? filePaths : [])
   )
 }

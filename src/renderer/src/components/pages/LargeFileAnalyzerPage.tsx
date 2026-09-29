@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useTabActivated } from '../../lib/tab-activity';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
 import { BarChart, PieChart, HardDrive } from 'lucide-react';
+import { formatBytes as formatSize } from '../../lib/utils';
 
 export function LargeFileAnalyzerPage() {
   const [largestFiles, setLargestFiles] = useState<any[]>([]);
@@ -8,43 +10,33 @@ export function LargeFileAnalyzerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      setError(null);
-      
-      const [filesRes, statsRes] = await Promise.all([
-        window.fileflow.analytics.getLargestFiles(50),
-        window.fileflow.analytics.getStorageAnalytics()
-      ]);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    const [filesRes, statsRes] = await Promise.all([
+      window.fileflow.analytics.getLargestFiles(50),
+      window.fileflow.analytics.getStorageAnalytics()
+    ]);
 
-      if (!filesRes.ok) {
-        setError(filesRes.error.message);
-      } else {
-        setLargestFiles(filesRes.data);
-      }
+    if (!filesRes.ok) {
+      setError(filesRes.error.message);
+    } else {
+      setLargestFiles(filesRes.data);
+    }
 
-      if (statsRes.ok) {
-        setExtStats(statsRes.data.extStats);
-      }
-      
-      setIsLoading(false);
+    if (statsRes.ok) {
+      setExtStats(statsRes.data.extStats);
     }
     
-    loadData();
+    setIsLoading(false);
   }, []);
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  useTabActivated(loadData);
 
   return (
-    <div className="h-full flex flex-col bg-gray-50/50">
-      <div className="p-6 pb-4 border-b bg-white">
+    <div className="h-full flex flex-col bg-transparent">
+      <div className="p-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <HardDrive className="w-6 h-6 text-teal-600" />
           Large File Analyzer

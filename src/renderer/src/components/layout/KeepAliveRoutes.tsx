@@ -1,0 +1,59 @@
+import React, { Suspense, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { TabActiveContext } from '../../lib/tab-activity'
+import { ErrorBoundary } from '../shared/ErrorBoundary'
+
+export interface KeepAliveRoute {
+  path: string
+  element: React.ReactNode
+  /** Human name for error messages, e.g. "Duplicates". */
+  label?: string
+}
+
+/**
+ * Route outlet that mounts each page on first visit and then keeps it mounted,
+ * hiding inactive pages instead of unmounting them. Switching tabs therefore
+ * never discards in-progress work: component state, running scans and their
+ * progress subscriptions all survive navigation.
+ */
+function PageLoading(): React.JSX.Element {
+  return (
+    <div className="flex-1 flex items-center justify-center text-sm text-gray-500" role="status">
+      Loading…
+    </div>
+  )
+}
+
+export function KeepAliveRoutes({ routes }: { routes: KeepAliveRoute[] }): React.JSX.Element {
+  const { pathname } = useLocation()
+  const [visited, setVisited] = useState<string[]>([pathname])
+
+  if (!visited.includes(pathname) && routes.some((r) => r.path === pathname)) {
+    // Setting state during render (instead of in an effect) mounts the page in
+    // this same render, so there is no blank frame on first visit.
+    setVisited([...visited, pathname])
+  }
+
+  return (
+    <>
+      {routes
+        .filter((r) => visited.includes(r.path))
+        .map((r) => {
+          const isActive = r.path === pathname
+          return (
+            <div
+              key={r.path}
+              className={isActive ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}
+              aria-hidden={!isActive}
+            >
+              <TabActiveContext.Provider value={isActive}>
+                <ErrorBoundary label={r.label}>
+                  <Suspense fallback={<PageLoading />}>{r.element}</Suspense>
+                </ErrorBoundary>
+              </TabActiveContext.Provider>
+            </div>
+          )
+        })}
+    </>
+  )
+}

@@ -16,9 +16,15 @@ export interface Mp4PlaybackVerification {
   healthScore: number
 }
 
+/** Allow-listed repair strategies; arguments are built in the main process. */
+export type RepairId = 'remux' | 'faststart' | 'reencode' | 'reencode-tolerant'
+
 export interface Mp4Recommendation {
   action: string
   confidence: 'high' | 'medium' | 'low'
+  /** Which repair to run — the only thing the renderer sends back. */
+  repairId?: RepairId
+  /** Display/copy text for the equivalent command line. Never executed. */
   command?: string
 }
 
@@ -42,6 +48,8 @@ export interface Mp4FileResult {
   errorLogs?: string[]
   repairStatus?: 'idle' | 'repairing' | 'success' | 'error'
   repairedPath?: string
+  // Set when reopening a saved scan and the file no longer exists on disk
+  missingOnDisk?: boolean
 }
 
 export interface Mp4AnalyzerSummary {
@@ -57,4 +65,34 @@ export interface Mp4ScanProgress {
   total: number
   currentFile: string
   result?: Mp4FileResult
+}
+
+// Change compared with the previous completed scan of the same target
+export interface Mp4ScanDiff {
+  newlyCorrupted: number // was healthy, now not healthy
+  fixed: number // was not healthy, now healthy
+  newFiles: number
+  removedFiles: number // only counted when this scan completed
+}
+
+// One row of scan history (never includes per-file results)
+export interface Mp4ScanSummary {
+  id: string
+  targetPath: string
+  targetType: 'file' | 'folder'
+  startedAt: string
+  finishedAt: string
+  status: 'completed' | 'cancelled'
+  filesFound: number
+  filesScanned: number
+  totalSize: number
+  healthy: number
+  corrupted: number
+  repairable: number
+  unrecoverable: number
+  diff: Mp4ScanDiff | null // null = first scan of this target
+}
+
+export interface Mp4ScanRecord extends Mp4ScanSummary {
+  results: Mp4FileResult[]
 }

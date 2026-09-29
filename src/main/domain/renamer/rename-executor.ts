@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { RenamePreviewItem } from './rename-evaluator';
 import { HistoryService, BatchItem } from '../history/history-service';
+import { resolveUniquePath } from '../shared/unique-path';
 
 export interface RenameExecuteResult {
   batchId: string;
@@ -36,15 +37,7 @@ export class RenameExecutor {
       }
 
       // Check on-disk collision (in case another process created a file between preview and execute)
-      if (fs.existsSync(targetPath)) {
-        const ext = path.extname(item.newName);
-        const base = path.basename(item.newName, ext);
-        let counter = 1;
-        while (fs.existsSync(targetPath)) {
-          targetPath = path.join(dirName, `${base} (${counter})${ext}`);
-          counter++;
-        }
-      }
+      targetPath = resolveUniquePath(targetPath);
 
       try {
         fs.renameSync(item.originalPath, targetPath);
