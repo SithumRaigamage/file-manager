@@ -38,6 +38,7 @@ import {
   PlayCircle
 } from 'lucide-react'
 import { useSearcherStore, ViewMode, SearchResult, Drive } from '../../store/searcherStore'
+import { AutomationPreview } from '../searcher/AutomationPreview'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -630,6 +631,9 @@ export function SearcherPage(): React.ReactElement {
   const [automationLog, setAutomationLog] = useState<
     { msg: string; type: 'info' | 'success' | 'error' }[]
   >([])
+  // Scan results awaiting the user's review before anything is moved
+  const [automationPlan, setAutomationPlan] = useState<Record<string, SearchResult[]> | null>(null)
+  const [automationTotal, setAutomationTotal] = useState(0)
 
   const [activePlaybackVideo, setActivePlaybackVideo] = useState<SearchResult | null>(null)
 
@@ -796,84 +800,94 @@ export function SearcherPage(): React.ReactElement {
     isCollecting
   ])
 
-  const handleAutomation = useCallback(async (): Promise<void> => {
+  const automationApi = window.api as unknown as {
+    searcher: {
+      batchSearch: (p: {
+        drivePath: string
+        queries: string[]
+        destRoot: string
+      }) => Promise<Record<string, SearchResult[]>>
+      collect: (p: {
+        results: SearchResult[]
+        destRoot: string
+        folderName: string
+      }) => Promise<{ success: boolean; moved: number; errors: string[] }>
+    }
+  }
+
+  // Step 1: scan only. Nothing is moved until the user reviews the plan.
+  const handleAutomationScan = useCallback(async (): Promise<void> => {
     const searchRoot = sourceFolder || selectedDrive?.path
     const destRoot = destinationFolder || selectedDrive?.path
     if (!searchRoot || !destRoot || savedKeywords.length === 0 || isAutomating) return
 
     setIsAutomating(true)
+    setAutomationPlan(null)
     setAutomationStep(0)
-    setAutomationLog([{ msg: 'Starting full-drive categorization scan...', type: 'info' }])
+    setAutomationTotal(0)
+    setAutomationLog([
+      { msg: 'Scanning for keyword matches (nothing is moved yet)...', type: 'info' }
+    ])
     setAutomationStatus('Scanning...')
-
-    const api = window.api as unknown as {
-      searcher: {
-        batchSearch: (p: {
-          drivePath: string
-          queries: string[]
-        }) => Promise<Record<string, SearchResult[]>>
-        collect: (p: {
-          results: SearchResult[]
-          destRoot: string
-          folderName: string
-        }) => Promise<{ success: boolean; moved: number }>
-      }
+    try {
+      const plan = await automationApi.searcher.batchSearch({
+        drivePath: searchRoot,
+        queries: savedKeywords,
+        destRoot
+      })
+      setAutomationPlan(plan)
+    } catch (err) {
+      setAutomationLog((prev) => [
+        { msg: `Scan failed: ${(err as Error).message}`, type: 'error' },
+        ...prev
+      ])
+    } finally {
+      setIsAutomating(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceFolder, destinationFolder, selectedDrive, savedKeywords, isAutomating])
+
+  // Step 2: move the reviewed plan. Each keyword is its own undoable History batch.
+  const handleAutomationApply = useCallback(async (): Promise<void> => {
+    const destRoot = destinationFolder || selectedDrive?.path
+    if (!automationPlan || !destRoot || isAutomating) return
+
+    const keywords = Object.keys(automationPlan).filter((k) => automationPlan[k].length > 0)
+    setAutomationTotal(keywords.length)
+    setIsAutomating(true)
+    setAutomationStep(0)
+    setAutomationLog([{ msg: 'Moving reviewed matches...', type: 'info' }])
+    let overallMoved = 0
 
     try {
-      // 1. Batch Search
-      const batchResults = await api.searcher.batchSearch({
-        drivePath: searchRoot,
-        queries: savedKeywords
-      })
-
-      const totalKeywords = savedKeywords.length
-      let overallMoved = 0
-
-      // 2. Process each keyword
-      for (let i = 0; i < totalKeywords; i++) {
-        const keyword = savedKeywords[i]
-        const keywordItems = batchResults[keyword] || []
-
+      for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i]
+        const items = automationPlan[keyword]
         setAutomationStep(i + 1)
+        setAutomationStatus(`Organizing: ${keyword} (${items.length} items)`)
 
-        if (keywordItems.length === 0) {
-          setAutomationLog((prev) => [
-            { msg: `Skipping "${keyword}": No matches found.`, type: 'info' },
-            ...prev
-          ])
-          continue
-        }
-
-        setAutomationStatus(`Organizing: ${keyword} (${keywordItems.length} items)`)
-        setAutomationLog((prev) => [
-          { msg: `Moving ${keywordItems.length} items to folder "${keyword}"...`, type: 'info' },
-          ...prev
-        ])
-
-        const res = await api.searcher.collect({
-          results: keywordItems,
+        const res = await automationApi.searcher.collect({
+          results: items,
           destRoot,
           folderName: keyword
         })
-
-        if (res.success) {
-          overallMoved += res.moved
-          setAutomationLog((prev) => [
-            { msg: `Successfully organized "${keyword}".`, type: 'success' },
-            ...prev
-          ])
-        } else {
-          setAutomationLog((prev) => [
-            { msg: `Completed "${keyword}" with some issues.`, type: 'error' },
-            ...prev
-          ])
-        }
+        overallMoved += res.moved
+        setAutomationLog((prev) => [
+          res.success
+            ? { msg: `Moved ${res.moved} item(s) into "${keyword}".`, type: 'success' }
+            : {
+                msg: `"${keyword}": moved ${res.moved}, ${res.errors.length} issue(s) — ${res.errors[0]}`,
+                type: 'error'
+              },
+          ...prev
+        ])
       }
-
       setAutomationStatus('Complete')
       setAutomationLog((prev) => [
-        { msg: `Automation finished! Total items organized: ${overallMoved}`, type: 'success' },
+        {
+          msg: `Finished: ${overallMoved} item(s) organized. Undo any keyword from the History page.`,
+          type: 'success'
+        },
         ...prev
       ])
     } catch (err) {
@@ -882,9 +896,11 @@ export function SearcherPage(): React.ReactElement {
         ...prev
       ])
     } finally {
+      setAutomationPlan(null)
       setIsAutomating(false)
     }
-  }, [sourceFolder, destinationFolder, selectedDrive, savedKeywords, isAutomating])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [automationPlan, destinationFolder, selectedDrive, isAutomating])
 
   const handleCloseModal = (): void => {
     setCollectResult(null)
@@ -1504,19 +1520,26 @@ export function SearcherPage(): React.ReactElement {
                       </div>
                       <h3 className="text-xl font-bold text-gray-800">{automationStatus}</h3>
                       <p className="text-sm text-gray-400 mt-1">
-                        Keyword {automationStep} of {savedKeywords.length}
+                        Keyword {automationStep} of {automationTotal}
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
                         <span>Overall Progress</span>
-                        <span>{Math.round((automationStep / savedKeywords.length) * 100)}%</span>
+                        <span>
+                          {automationTotal
+                            ? Math.round((automationStep / automationTotal) * 100)
+                            : 0}
+                          %
+                        </span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden border border-white/30 p-0.5">
                         <motion.div
                           className="bg-gradient-to-r from-amber-400 to-orange-500 h-full rounded-full shadow-sm"
-                          animate={{ width: `${(automationStep / savedKeywords.length) * 100}%` }}
+                          animate={{
+                            width: `${automationTotal ? (automationStep / automationTotal) * 100 : 0}%`
+                          }}
                         />
                       </div>
                     </div>
@@ -1559,21 +1582,32 @@ export function SearcherPage(): React.ReactElement {
                       <div>
                         <p className="text-sm font-bold text-blue-900">How it works</p>
                         <p className="text-xs text-blue-700/80 mt-1 leading-relaxed">
-                          We will perform a single deep scan of your source folder. Any file or
-                          folder starting with your saved keywords will be moved to a matching
-                          subfolder in your destination directory. Existing folders will be merged.
+                          We first scan your source folder and show every match per keyword. Nothing
+                          is moved until you review the list and confirm. Each keyword&apos;s move can be
+                          undone from the History page.
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleAutomation}
-                      disabled={savedKeywords.length === 0 || (!sourceFolder && !selectedDrive)}
-                      className="w-full py-5 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-amber-200 hover:shadow-amber-400 transition-all flex items-center justify-center gap-3 active:scale-95 focus:outline-none"
-                    >
-                      <PlayCircle size={24} />
-                      Start Organizing All Keywords
-                    </button>
+                    {automationPlan && (
+                      <AutomationPreview
+                        plan={automationPlan}
+                        destRoot={destinationFolder || selectedDrive?.path || ''}
+                        onApply={handleAutomationApply}
+                        onDiscard={() => setAutomationPlan(null)}
+                      />
+                    )}
+
+                    {!automationPlan && (
+                      <button
+                        onClick={handleAutomationScan}
+                        disabled={savedKeywords.length === 0 || (!sourceFolder && !selectedDrive)}
+                        className="w-full py-5 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-amber-200 hover:shadow-amber-400 transition-all flex items-center justify-center gap-3 active:scale-95 focus:outline-none"
+                      >
+                        <PlayCircle size={24} />
+                        Scan &amp; Preview Matches
+                      </button>
+                    )}
 
                     {savedKeywords.length === 0 && (
                       <p className="text-xs text-center text-rose-500 font-medium">

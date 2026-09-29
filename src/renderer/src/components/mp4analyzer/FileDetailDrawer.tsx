@@ -39,7 +39,7 @@ export function FileDetailDrawer({
   onClose,
   onRepairSuccess
 }: FileDetailDrawerProps): React.JSX.Element {
-  const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
+  const trashFiles = useMp4AnalyzerStore((s) => s.trashFiles)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'diagnostics' | 'player' | 'structure' | 'logs'>(
     'diagnostics'
@@ -194,22 +194,17 @@ export function FileDetailDrawer({
                 {file.corruptionLevel !== 'healthy' && !file.missingOnDisk && (
                   <button
                     onClick={async () => {
-                      try {
-                        const res = await window.api.mp4analyzer.deleteFile(file.filePath)
-                        if (res.success) {
-                          if (res.action === 'folder') {
-                            removeFolderResults(res.folderPath)
-                          } else if (res.action === 'file') {
-                            removeResult(res.filePath)
-                          }
-                          onClose()
-                        }
-                      } catch (err) {
-                        alert(`Failed to delete: ${(err as Error).message}`)
-                      }
+                      const error = await trashFiles([file.filePath])
+                      if (error) alert(error)
+                      else if (
+                        !useMp4AnalyzerStore
+                          .getState()
+                          .results.some((r) => r.filePath === file.filePath)
+                      )
+                        onClose()
                     }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-655 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                    title="Delete corrupted video file"
+                    title="Move corrupted video to Trash"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -632,24 +627,19 @@ export function FileDetailDrawer({
               {file.corruptionLevel !== 'healthy' && (
                 <button
                   onClick={async () => {
-                    try {
-                      const res = await window.api.mp4analyzer.deleteFile(file.filePath)
-                      if (res.success) {
-                        if (res.action === 'folder') {
-                          removeFolderResults(res.folderPath)
-                        } else if (res.action === 'file') {
-                          removeResult(res.filePath)
-                        }
-                        onClose()
-                      }
-                    } catch (err) {
-                      alert(`Failed to delete: ${(err as Error).message}`)
-                    }
+                    const error = await trashFiles([file.filePath])
+                    if (error) alert(error)
+                    else if (
+                      !useMp4AnalyzerStore
+                        .getState()
+                        .results.some((r) => r.filePath === file.filePath)
+                    )
+                      onClose()
                   }}
                   className="px-4 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-rose-200 transition-all flex items-center gap-1.5"
                 >
                   <Trash2 size={14} />
-                  Delete File
+                  Move to Trash
                 </button>
               )}
               <div className="flex-1" />

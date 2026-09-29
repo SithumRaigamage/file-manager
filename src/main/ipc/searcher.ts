@@ -3,6 +3,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { walkDirectory } from '../domain/shared/directory-walker'
 import { resolveUniquePath } from '../domain/shared/unique-path'
+import { movePath, isSameOrInside } from '../domain/shared/move-path'
+import { planKeywordCollection } from '../domain/searcher/collect-plan'
+import { HistoryService, BatchItem } from '../domain/history/history-service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +43,8 @@ export interface CollectResult {
   moved: number
   newFolderPath: string
   errors: string[]
+  /** History batch id — the move can be undone from the History page. */
+  batchId?: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -171,27 +176,6 @@ function deduplicateResults(results: SearchResult[]): SearchResult[] {
   })
 }
 
-function moveItem(source: string, dest: string): void {
-  // Try rename first (fast on same drive)
-  try {
-    fs.renameSync(source, dest)
-  } catch {
-    // If it fails (e.g. cross-device), copy and delete
-    const stats = fs.statSync(source)
-    if (stats.isDirectory()) {
-      fs.mkdirSync(dest, { recursive: true })
-      const entries = fs.readdirSync(source)
-      for (const entry of entries) {
-        moveItem(path.join(source, entry), path.join(dest, entry))
-      }
-      fs.rmdirSync(source)
-    } else {
-      fs.copyFileSync(source, dest)
-      fs.unlinkSync(source)
-    }
-  }
-}
-
 function sanitizeFolderName(name: string): string {
   // eslint-disable-next-line no-control-regex
   return name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').trim() || 'collected'
@@ -226,7 +210,10 @@ export function registerSearcherHandlers(): void {
           const item = toSearchResult(fullPath, entry, currentPath, drivePath)
           if (item) {
             results.push(item)
-            event.sender.send('searcher:progress', { scanned: state.scanned, found: results.length })
+            event.sender.send('searcher:progress', {
+              scanned: state.scanned,
+              found: results.length
+            })
           }
         }
       })
@@ -263,26 +250,42 @@ export function registerSearcherHandlers(): void {
         }
       }
 
+      const historyItems: BatchItem[] = []
+
       for (const item of results) {
         // Skip if item no longer exists (may have been moved as part of parent)
         if (!fs.existsSync(item.fullPath)) continue
 
+        // A folder that contains the destination would be moved into itself
+        if (isSameOrInside(item.fullPath, newFolderPath)) {
+          errors.push(`Skipped "${item.name}": it contains the destination folder`)
+          continue
+        }
+
         const destPath = resolveUniquePath(path.join(newFolderPath, item.name))
 
         try {
-          moveItem(item.fullPath, destPath)
+          movePath(item.fullPath, destPath)
           moved++
+          historyItems.push({ before: item.fullPath, after: destPath, status: 'success' })
           event.sender.send('searcher:collect-progress', { moved, total: results.length })
         } catch (err) {
           errors.push(`Failed to move "${item.name}": ${(err as Error).message}`)
         }
       }
 
+      // Every collect is undoable from the History page
+      const batchId =
+        historyItems.length > 0
+          ? HistoryService.logBatch('organize', historyItems, true)
+          : undefined
+
       return {
         success: errors.length === 0,
         moved,
         newFolderPath,
-        errors
+        errors,
+        batchId
       }
     }
   )
@@ -310,9 +313,9 @@ export function registerSearcherHandlers(): void {
     'searcher:batch-search',
     async (
       event,
-      params: { drivePath: string; queries: string[] }
+      params: { drivePath: string; queries: string[]; destRoot?: string }
     ): Promise<Record<string, SearchResult[]>> => {
-      const { drivePath, queries } = params
+      const { drivePath, queries, destRoot } = params
       if (queries.length === 0) return {}
 
       const keywordMap = queries.reduce(
@@ -351,11 +354,13 @@ export function registerSearcherHandlers(): void {
       })
 
       // Convert map to plain object of results
-      const final: Record<string, SearchResult[]> = {}
+      const deduped: Record<string, SearchResult[]> = {}
       for (const q of queries) {
-        final[q] = deduplicateResults(keywordMap[q].results)
+        deduped[q] = deduplicateResults(keywordMap[q].results)
       }
-      return final
+      // With a destination, return a safe move plan: each item under one keyword,
+      // nothing nested in another planned item, nothing containing the destination.
+      return destRoot ? planKeywordCollection(deduped, queries, destRoot) : deduped
     }
   )
 }

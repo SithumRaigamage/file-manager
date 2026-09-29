@@ -46,7 +46,7 @@ const legacyApi = {
     exportJson: (results: unknown) => ipcRenderer.invoke('mp4analyzer:exportJson', results),
     runRepair: (filePath: string, command: string) => ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
     deleteFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:deleteFile', filePath),
-    deleteMultipleFiles: (filePaths: string[], scannedFolder: string | null) => ipcRenderer.invoke('mp4analyzer:deleteMultipleFiles', filePaths, scannedFolder),
+    deleteMultipleFiles: (filePaths: string[]) => ipcRenderer.invoke('mp4analyzer:deleteMultipleFiles', filePaths),
     listScans: () => ipcRenderer.invoke('mp4analyzer:listScans'),
     getScan: (id: string) => ipcRenderer.invoke('mp4analyzer:getScan', id),
     onProgress: (cb: (data: unknown) => void) => {
@@ -62,9 +62,10 @@ const legacyApi = {
 
 // --- NEW fileflow API (Architecture Phase 0 Contract) ---
 
-export type IpcResponse<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: { code: string; message: string } };
+import type { IpcResponse } from '../main/ipc/ipc-response';
+import type { TrashResult } from '../main/features/shared/trash';
+import type { RevertSummary } from '../main/domain/history/history-service';
+export type { IpcResponse, TrashResult, RevertSummary };
 
 export interface OrganizePreviewItem {
   originalPath: string;
@@ -152,7 +153,7 @@ const fileflowApi = {
   renamer: {
     previewRename: (paths: string[], pattern: RenamePattern): Promise<IpcResponse<RenamePreviewItem[]>> => ipcRenderer.invoke('renamer:previewRename', paths, pattern),
     applyRename: (items: RenamePreviewItem[]): Promise<IpcResponse<RenameResult>> => ipcRenderer.invoke('renamer:applyRename', items),
-    undoRename: (batchId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('renamer:undoRename', batchId),
+    undoRename: (batchId: string): Promise<IpcResponse<RevertSummary>> => ipcRenderer.invoke('renamer:undoRename', batchId),
   },
   converter: {
     enqueueConversion: (paths: string[], preset: ConversionPreset): Promise<IpcResponse<{ jobId: string }>> => ipcRenderer.invoke('converter:enqueueConversion', paths, preset),
@@ -165,7 +166,7 @@ const fileflowApi = {
   },
   history: {
     listBatches: (filter?: HistoryFilter): Promise<IpcResponse<BatchRecord[]>> => ipcRenderer.invoke('history:listBatches', filter),
-    revertBatch: (batchId: string): Promise<IpcResponse<void>> => ipcRenderer.invoke('history:revertBatch', batchId),
+    revertBatch: (batchId: string): Promise<IpcResponse<RevertSummary>> => ipcRenderer.invoke('history:revertBatch', batchId),
   },
   settings: {
     get: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:settings:get'),
@@ -176,7 +177,7 @@ const fileflowApi = {
     cancel: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:cancel'),
     getGroups: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:duplicates:getGroups'),
     clear: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:clear'),
-    resolve: (groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:resolve', groupId, keepPath, deletePaths),
+    resolve: (groupId: string, keepPath: string, deletePaths: string[]): Promise<IpcResponse<TrashResult>> => ipcRenderer.invoke('fileflow:duplicates:resolve', groupId, keepPath, deletePaths),
     onProgress: (callback: (data: any) => void) => {
       const handler = (_event: IpcRendererEvent, data: any) => callback(data);
       ipcRenderer.on('fileflow:duplicates:progress', handler);

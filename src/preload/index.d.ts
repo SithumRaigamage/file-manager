@@ -11,6 +11,8 @@ import {
   BatchRecord,
   HistoryFilter,
   IpcResponse,
+  TrashResult,
+  RevertSummary,
 } from './index';
 
 declare global {
@@ -28,7 +30,7 @@ declare global {
       renamer: {
         previewRename(paths: string[], pattern: RenamePattern): Promise<IpcResponse<RenamePreviewItem[]>>;
         applyRename(items: RenamePreviewItem[]): Promise<IpcResponse<RenameResult>>;
-        undoRename(batchId: string): Promise<IpcResponse<void>>;
+        undoRename(batchId: string): Promise<IpcResponse<RevertSummary>>;
       };
       converter: {
         enqueueConversion(paths: string[], preset: ConversionPreset): Promise<IpcResponse<{ jobId: string }>>;
@@ -37,7 +39,7 @@ declare global {
       };
       history: {
         listBatches(filter?: HistoryFilter): Promise<IpcResponse<BatchRecord[]>>;
-        revertBatch(batchId: string): Promise<IpcResponse<void>>;
+        revertBatch(batchId: string): Promise<IpcResponse<RevertSummary>>;
       };
       settings: {
         get(): Promise<IpcResponse<any>>;
@@ -48,7 +50,7 @@ declare global {
         cancel(): Promise<IpcResponse<void>>;
         getGroups: () => Promise<IpcResponse<any[]>>;
         clear: () => Promise<IpcResponse<void>>;
-        resolve: (groupId: string, keepPath: string, deletePaths: string[]) => Promise<IpcResponse<void>>;
+        resolve: (groupId: string, keepPath: string, deletePaths: string[]) => Promise<IpcResponse<TrashResult>>;
         onProgress(callback: (data: any) => void): () => void;
       };
       dashboard: {

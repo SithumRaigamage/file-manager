@@ -12,7 +12,7 @@ interface ResultsTableProps {
 }
 
 export function ResultsTable({ results, onSelectFile }: ResultsTableProps): React.JSX.Element {
-  const { removeResult, removeFolderResults, scannedFolder } = useMp4AnalyzerStore()
+  const trashFiles = useMp4AnalyzerStore((s) => s.trashFiles)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof Mp4FileResult | 'healthScore'>('fileName')
@@ -63,20 +63,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   const handleDeleteAllCorrupted = async (): Promise<void> => {
     const filePaths = corruptedFiles.map((r) => r.filePath)
     if (filePaths.length === 0) return
-
-    try {
-      const res = await window.api.mp4analyzer.deleteMultipleFiles(filePaths, scannedFolder)
-      if (res.success) {
-        res.deletedFolders.forEach((folder) => {
-          removeFolderResults(folder)
-        })
-        res.deletedFiles.forEach((file) => {
-          removeResult(file)
-        })
-      }
-    } catch (err) {
-      alert(`Failed to delete files: ${(err as Error).message}`)
-    }
+    const error = await trashFiles(filePaths)
+    if (error) alert(error)
   }
 
   const filteredResults = useMemo(() => {
@@ -156,7 +144,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
               title="Delete all corrupted videos (minor, moderate, severe, and unrecoverable)"
             >
               <Trash2 size={14} />
-              Delete All Corrupted ({corruptedFilesCount})
+              Trash All Corrupted ({corruptedFilesCount})
             </button>
           )}
         </div>
@@ -297,21 +285,11 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                           <button
                             onClick={async (e) => {
                               e.stopPropagation()
-                              try {
-                                const res = await window.api.mp4analyzer.deleteFile(r.filePath)
-                                if (res.success) {
-                                  if (res.action === 'folder') {
-                                    removeFolderResults(res.folderPath)
-                                  } else if (res.action === 'file') {
-                                    removeResult(res.filePath)
-                                  }
-                                }
-                              } catch (err) {
-                                alert(`Failed to delete: ${(err as Error).message}`)
-                              }
+                              const error = await trashFiles([r.filePath])
+                              if (error) alert(error)
                             }}
                             className="p-1.5 rounded-lg text-gray-455 hover:text-red-605 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                            title="Delete corrupted video file"
+                            title="Move corrupted video to Trash"
                           >
                             <Trash2 size={16} />
                           </button>

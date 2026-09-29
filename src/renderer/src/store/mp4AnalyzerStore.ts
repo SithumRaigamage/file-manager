@@ -47,7 +47,11 @@ interface Mp4AnalyzerState {
   setActiveTab: (tab: Mp4AnalyzerTab) => void
   setSelectedFile: (file: Mp4FileResult | null) => void
   removeResult: (filePath: string) => void
-  removeFolderResults: (folderPath: string) => void
+  /**
+   * Moves the given videos to the OS Trash (after a native confirmation) and
+   * drops the trashed ones from the results. Returns an error message, or null.
+   */
+  trashFiles: (filePaths: string[]) => Promise<string | null>
   resetStore: () => void
   fetchHistory: () => Promise<void>
   openScan: (id: string) => Promise<void>
@@ -133,24 +137,33 @@ export const useMp4AnalyzerStore = create<Mp4AnalyzerState>((set, get) => ({
       }
     }),
 
-  removeFolderResults: (folderPath) =>
-    set((s) => {
-      const normalizedFolder =
-        folderPath.endsWith('/') || folderPath.endsWith('\\') ? folderPath : folderPath + '/'
-      const newResults = s.results.filter((r) => {
-        return r.filePath !== folderPath && !r.filePath.startsWith(normalizedFolder)
-      })
-      return {
-        results: newResults,
-        summary: calculateSummary(newResults),
-        selectedFile:
-          s.selectedFile &&
-          (s.selectedFile.filePath === folderPath ||
-            s.selectedFile.filePath.startsWith(normalizedFolder))
-            ? null
-            : s.selectedFile
+  trashFiles: async (filePaths) => {
+    try {
+      const res = (await window.api.mp4analyzer.deleteMultipleFiles(filePaths)) as IpcResult<{
+        trashed: string[]
+        failed: Array<{ path: string; reason: string }>
+      }>
+      if (!res.ok) return res.error.message
+
+      const trashed = new Set(res.data.trashed)
+      if (trashed.size > 0) {
+        set((s) => {
+          const newResults = s.results.filter((r) => !trashed.has(r.filePath))
+          return {
+            results: newResults,
+            summary: calculateSummary(newResults),
+            selectedFile:
+              s.selectedFile && trashed.has(s.selectedFile.filePath) ? null : s.selectedFile
+          }
+        })
       }
-    }),
+      return res.data.failed.length > 0
+        ? `Could not move ${res.data.failed.length} file(s) to the Trash: ${res.data.failed[0].reason}`
+        : null
+    } catch (err) {
+      return (err as Error).message
+    }
+  },
 
   resetStore: () =>
     set({

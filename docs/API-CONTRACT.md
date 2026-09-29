@@ -36,7 +36,7 @@ type IpcResponse<T> =
 
 - `previewRename(paths: string[], pattern: RenamePattern) → RenamePreviewItem[]` (includes conflict flags)
 - `applyRename(items: RenamePreviewItem[]) → RenameResult`
-- `undoRename(batchId: string) → void`
+- `undoRename(batchId: string) → RevertSummary` (same semantics as `history.revertBatch`)
 
 ### `fileflow.converter`
 
@@ -47,7 +47,26 @@ type IpcResponse<T> =
 ### `fileflow.history`
 
 - `listBatches(filter?: HistoryFilter) → BatchRecord[]`
-- `revertBatch(batchId: string) → void`
+- `revertBatch(batchId: string) → RevertSummary` — `{ reverted: number; failed: Array<{ path; reason }> }`. Never overwrites: an item whose original location is now occupied, or whose moved file is gone, is reported in `failed` and **stays in the batch** so it can be retried; the batch is removed only when every item was reverted.
+
+### Destructive actions — shared rules (2026-09-29)
+
+- Every delete moves items to the OS Trash (`shell.trashItem`) — never `unlink`/`rm`. Folders are never deleted as a side effect of removing a file.
+- The **main process** shows the confirmation (Cancel is the default and the Escape action), so the renderer cannot skip it. A cancelled confirmation resolves `{ ok: true, data: { trashed: [], failed: [] } }`.
+- `TrashResult = { trashed: string[]; failed: Array<{ path; reason }> }`.
+
+### `fileflow.duplicates` — resolve (post-MVP)
+
+- `resolve(groupId, keepPath, deletePaths) → IpcResponse<TrashResult>` — validated against the stored group: `keepPath` must be in the group and still exist; `deletePaths` must be group members and exclude `keepPath` (`INVALID_RESOLUTION` otherwise, `GROUP_NOT_FOUND` if the group is gone).
+
+### `api.searcher` — collect / automation (post-MVP)
+
+- `collect({ results, destRoot, folderName }) → CollectResult` — every successful move is logged as one reversible `organize` history batch (`batchId` in the result). Items containing the destination are skipped.
+- `batchSearch({ drivePath, queries, destRoot? })` — with `destRoot`, returns a safe move plan: each item under its first matching keyword only, nothing nested in another planned item, nothing containing or inside `destRoot`. The UI shows this plan for review before any move.
+
+### `api.mp4analyzer` — delete (2026-09-29)
+
+- `deleteFile(filePath)` / `deleteMultipleFiles(filePaths) → IpcResponse<TrashResult>` — files only, to the Trash, after a main-process confirmation. (The former "delete containing folder" option and the `scannedFolder` parameter were removed.)
 
 ### `api.mp4analyzer` — scan history (post-MVP, added 2026-09-27)
 
@@ -86,4 +105,4 @@ Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder`
 
 ## Error Codes (initial set — expand as needed)
 
-- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`.
+- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`.
