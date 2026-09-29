@@ -19,6 +19,14 @@ import { FileDetailDrawer } from '../mp4analyzer/FileDetailDrawer'
 import { ScanHistoryPanel } from '../mp4analyzer/ScanHistoryPanel'
 import { useTabActivated } from '../../lib/tab-activity'
 import { cn } from '../../lib/utils'
+import { basename } from '../../lib/paths'
+import { toast } from '../../store/useToastStore'
+
+/** Electron prefixes rejected IPC errors with "Error invoking remote method '…': Error: ". */
+function ipcErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  return message.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, '')
+}
 
 export function Mp4AnalyzerPage(): React.JSX.Element {
   const {
@@ -60,6 +68,17 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     return () => unsubscribe()
   }, [setProgress, addResult])
 
+  // Folders macOS won't let us read (e.g. ~/Movies/TV) are skipped, not fatal
+  useEffect(() => {
+    return window.api.mp4analyzer.onSkippedFolders((folders: string[]) => {
+      const names = folders.slice(0, 3).map(basename).join(', ')
+      const more = folders.length > 3 ? ` and ${folders.length - 3} more` : ''
+      toast.info(
+        `Skipped ${folders.length} folder${folders.length === 1 ? '' : 's'} FileFlow isn't allowed to read: ${names}${more}.`
+      )
+    })
+  }, [])
+
   const handleSelectFile = async (): Promise<void> => {
     try {
       const filePaths = await window.api.openFiles()
@@ -79,6 +98,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       fetchHistory()
     } catch (err) {
       console.error(err)
+      toast.error(ipcErrorMessage(err))
       setScanState('idle')
     }
   }
@@ -102,6 +122,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
       fetchHistory()
     } catch (err) {
       console.error(err)
+      toast.error(ipcErrorMessage(err))
       setScanState('idle')
     }
   }

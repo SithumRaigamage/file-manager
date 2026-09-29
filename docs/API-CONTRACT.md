@@ -65,6 +65,10 @@ type IpcResponse<T> =
 - `collect({ results, destRoot, folderName }) → CollectResult` — every successful move is logged as one reversible `organize` history batch (`batchId` in the result). Items containing the destination are skipped.
 - `batchSearch({ drivePath, queries, destRoot? })` — with `destRoot`, returns a safe move plan: each item under its first matching keyword only, nothing nested in another planned item, nothing containing or inside `destRoot`. The UI shows this plan for review before any move.
 
+### `api.mp4analyzer` — folder scan
+
+- `analyzeFolder(path)` skips subfolders it can't read and emits `mp4analyzer:skippedFolders` (`string[]`, subscribe with `onSkippedFolders`); it rejects only when the chosen folder itself is unreadable, with a user-facing message.
+
 ### `api.mp4analyzer` — repair (2026-09-29)
 
 - `runRepair(filePath, repairId: 'remux' | 'faststart' | 'reencode' | 'reencode-tolerant')` — arguments built in the main process; output is a unique `<name>_repaired.mp4` beside the input. `Mp4Recommendation.command` is display text only.

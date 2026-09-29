@@ -161,3 +161,9 @@ B1, B6 and B9 were already resolved in Phase 2.
 - **U6**: every page renders inside an `ErrorBoundary` with a retry action.
 - **U7**: MP4 repair progress is a real percentage (FFmpeg `time=` over the probed duration, `domain/shared/ffmpeg-progress.ts`) instead of a fixed 50%.
 - Tests: `tests/unit/ux.spec.ts`, `tests/e2e/ux.spec.ts` (route, theme + reduced-motion classes, accessible names).
+
+## 2026-09-29 — MP4 Analyzer: folder scans survive unreadable subfolders
+
+- **Bug**: scanning `~/Movies` failed outright with `EPERM: operation not permitted, scandir '~/Movies/TV'` — the Apple TV library is protected by macOS privacy controls, and the analyzer's recursive `readdir` threw on it, so the scan returned nothing.
+- **Fix**: `domain/mp4analyzer/find-mp4-files.ts` (`findMp4Files`) walks with `walkDirectoryAsync`, which gained an `onUnreadable` callback. Unreadable **subfolders** are skipped and sent to the renderer on the new `mp4analyzer:skippedFolders` event (shown as an info toast); only an unreadable **root** fails, with a `FolderNotReadableError` whose message explains how to grant access (System Settings → Privacy & Security). The MP4 page now shows that error instead of silently resetting.
+- Verified on a real `~/Movies`: 568 MP4s found, `Movies/TV` skipped. Tests: `tests/unit/find-mp4-files.spec.ts`.

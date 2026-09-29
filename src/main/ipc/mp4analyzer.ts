@@ -49,6 +49,7 @@ import type { IpcResponse } from './ipc-response'
 import { confirmDestructive, summarizePaths } from '../features/shared/confirm-dialog'
 import { analyzeMp4File, StreamAnalyzer } from '../domain/mp4analyzer/file-analyzer'
 import { checkBasicFile } from '../domain/mp4analyzer/diagnosis'
+import { findMp4Files } from '../domain/mp4analyzer/find-mp4-files'
 import { isRepairId, buildRepairArgs, repairOutputPath } from '../domain/mp4analyzer/repair'
 import { resolveUniquePath } from '../domain/shared/unique-path'
 import { csvRow } from '../domain/shared/csv'
@@ -248,20 +249,6 @@ async function createStreamAnalyzer(): Promise<StreamAnalyzer | null> {
   }
 }
 
-async function scanDirectory(dirPath: string): Promise<string[]> {
-  const results: string[] = []
-  const files = await fs.promises.readdir(dirPath, { withFileTypes: true })
-  for (const file of files) {
-    const fullPath = path.join(dirPath, file.name)
-    if (file.isDirectory()) {
-      results.push(...(await scanDirectory(fullPath)))
-    } else if (file.isFile() && file.name.toLowerCase().endsWith('.mp4')) {
-      results.push(fullPath)
-    }
-  }
-  return results
-}
-
 export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFile',
@@ -301,12 +288,11 @@ export function registerMp4AnalyzerHandlers(): void {
       const isCurrent = (): boolean => generation === scanGeneration
       const results: Mp4FileResult[] = []
 
-      let files: string[] = []
-      try {
-        files = await scanDirectory(folderPath)
-      } catch (err) {
-        console.error(err)
-        return []
+      // An unreadable root throws FolderNotReadableError, whose message tells the
+      // user how to grant access; unreadable subfolders are skipped and reported.
+      const { files, unreadable } = await findMp4Files(folderPath)
+      if (unreadable.length > 0) {
+        event.sender.send('mp4analyzer:skippedFolders', unreadable)
       }
 
       const total = files.length

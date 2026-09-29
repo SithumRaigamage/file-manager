@@ -49,6 +49,8 @@ export interface AsyncWalkOptions {
   shouldSkipDir?: (entry: fs.Dirent, fullPath: string) => boolean
   /** Return false to abort early (cancellation). */
   shouldContinue?: () => boolean
+  /** Called for each directory that can't be read (e.g. macOS privacy-protected folders), which is then skipped. */
+  onUnreadable?: (dirPath: string, error: NodeJS.ErrnoException) => void
 }
 
 /**
@@ -60,7 +62,7 @@ export async function walkDirectoryAsync(
   rootPath: string,
   options: AsyncWalkOptions
 ): Promise<void> {
-  const { onEntry, shouldSkipDir, shouldContinue } = options
+  const { onEntry, shouldSkipDir, shouldContinue, onUnreadable } = options
   const pending: string[] = [rootPath]
 
   while (pending.length > 0) {
@@ -70,8 +72,10 @@ export async function walkDirectoryAsync(
     let entries: fs.Dirent[]
     try {
       entries = await fs.promises.readdir(currentPath, { withFileTypes: true })
-    } catch {
-      continue // unreadable (permissions, vanished) — skip, like walkDirectory
+    } catch (error) {
+      // unreadable (permissions, vanished) — skip, like walkDirectory
+      onUnreadable?.(currentPath, error as NodeJS.ErrnoException)
+      continue
     }
 
     for (const entry of entries) {

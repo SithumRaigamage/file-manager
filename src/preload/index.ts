@@ -53,7 +53,10 @@ const legacyApi = {
     onProgress: (cb: (data: unknown) => void): (() => void) =>
       subscribe('mp4analyzer:progress', cb),
     onRepairProgress: (cb: (data: unknown) => void): (() => void) =>
-      subscribe('mp4analyzer:repairProgress', cb)
+      subscribe('mp4analyzer:repairProgress', cb),
+    /** Subfolders skipped during a folder scan because they couldn't be read. */
+    onSkippedFolders: (cb: (folders: string[]) => void): (() => void) =>
+      subscribe('mp4analyzer:skippedFolders', cb)
   }
 }
 
