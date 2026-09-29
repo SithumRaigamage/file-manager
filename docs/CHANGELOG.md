@@ -123,3 +123,19 @@ Source: the "FileFlow Code Audit" doc (2026-09-29). Fixes the six paths that cou
 - **B1 resolved as a side effect**: both typecheck errors disappeared (`is` unused import removed, `parseFFmpegCommand` deleted), so `npm run build` works again.
 - Tests: `tests/unit/security-policy.spec.ts`; `tests/security.spec.ts` extended (no generic bridge; `media://` serves media and refuses other files incl. a disguised symlink, via `net.fetch` in main; `openPath` blocks scripts). Smoke test locator made exact after the Phase 1 "Keep" relabel.
 - Known follow-up: `src/preload/index.ts` still has `any`-typed payloads; typed in Phase 3 with the listener fix (B2).
+
+## 2026-09-29 — Audit Phase 3: medium bugs (B2–B5, B7, B8, B10–B12)
+
+B1, B6 and B9 were already resolved in Phase 2.
+
+- **B2**: preload `on*` subscriptions go through one `subscribe()` helper that removes only its own listener (previously `removeAllListeners` killed every subscriber on the channel). Preload payload types no longer use `any`.
+- **B3**: Advanced Search builds its FTS5 `MATCH` from quoted prefix terms (`domain/search/fts-query.ts`), so input such as `foo-bar`, `a:b` or a stray `"` no longer throws.
+- **B4**: the AI tag command requires a concrete file extension (a model misread can no longer tag the whole index), matches on the indexed `extension` column, and inserts with `ON CONFLICT DO NOTHING` so already-tagged files never roll back the batch.
+- **B5**: duplicate scans replace the previous unresolved groups atomically in one transaction. Also fixed while there: `cancel()` now settles the scan promise (the IPC call used to hang forever), a crashed hash worker is retired instead of stalling the queue, and result lookup is O(1) instead of a linear `find` per hashed file.
+- **B7**: a scheduled workflow that throws is logged and always rescheduled instead of staying `running` forever.
+- **B8**: `settings:update` validates against an allow-list (`domain/settings/settings-update.ts`); `id` and unknown columns are rejected.
+- **B10**: CSV export escapes every field and neutralises spreadsheet formulas (`domain/shared/csv.ts`).
+- **B11**: renderer path display uses cross-platform helpers (`renderer/src/lib/paths.ts`) instead of splitting on `/`.
+- **B12**: Ollama generation requests time out after 60 s.
+- Found, not fixed (outside the audit): the Settings page's FFmpeg path is stored but `features/converter/ffmpeg-locator.ts` never reads it, so the setting currently has no effect.
+- Tests: `tests/unit/bug-fixes.spec.ts`.

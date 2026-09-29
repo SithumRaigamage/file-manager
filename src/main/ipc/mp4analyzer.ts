@@ -51,6 +51,7 @@ import { analyzeMp4File, StreamAnalyzer } from '../domain/mp4analyzer/file-analy
 import { checkBasicFile } from '../domain/mp4analyzer/diagnosis'
 import { isRepairId, buildRepairArgs, repairOutputPath } from '../domain/mp4analyzer/repair'
 import { resolveUniquePath } from '../domain/shared/unique-path'
+import { csvRow } from '../domain/shared/csv'
 import type { IntegrityCheckResult } from '../domain/mp4analyzer/diagnosis'
 
 async function runFFprobeAnalysis(
@@ -464,24 +465,36 @@ export function registerMp4AnalyzerHandlers(): void {
 
       if (saveResult.canceled || !saveResult.filePath) return false
 
-      const headers =
-        'File Name,Path,Size (Bytes),Duration (s),Resolution,Codec,Status,Health %,Errors,Recommendation\n'
-      const rows = results
-        .map((r) => {
-          const size = r.fileSize
-          const dur = r.metadata?.duration || 0
-          const res = r.metadata?.resolution || 'N/A'
-          const cod = r.metadata?.codec || 'N/A'
-          const health =
-            r.corruptionLevel === 'unrecoverable' ? 0 : (r.playbackVerification?.healthScore ?? 100)
-          const errs = r.ffmpegValidation.errorCount
-          const rec = r.recommendation.action.replace(/"/g, '""')
-          return `"${r.fileName}","${r.filePath}",${size},${dur},"${res}","${cod}","${r.corruptionLevel}",${health},${errs},"${rec}"`
-        })
-        .join('\n')
+      const header = csvRow([
+        'File Name',
+        'Path',
+        'Size (Bytes)',
+        'Duration (s)',
+        'Resolution',
+        'Codec',
+        'Status',
+        'Health %',
+        'Errors',
+        'Recommendation'
+      ])
+      const rows = results.map((r) =>
+        csvRow([
+          r.fileName,
+          r.filePath,
+          r.fileSize,
+          r.metadata?.duration ?? 0,
+          r.metadata?.resolution ?? 'N/A',
+          r.metadata?.codec ?? 'N/A',
+          r.corruptionLevel,
+          r.corruptionLevel === 'unrecoverable' ? 0 : (r.playbackVerification?.healthScore ?? 100),
+          r.ffmpegValidation.errorCount,
+          r.recommendation.action
+        ])
+      )
+      const csv = [header, ...rows].join('\n')
 
       try {
-        fs.writeFileSync(saveResult.filePath, headers + rows, 'utf-8')
+        fs.writeFileSync(saveResult.filePath, csv, 'utf-8')
         return true
       } catch (err) {
         console.error(err)

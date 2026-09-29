@@ -4,15 +4,10 @@ import { History, RotateCcw, AlertTriangle } from 'lucide-react'
 import { useHistoryStore } from '../../store/useHistoryStore'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card'
+import { basename } from '../../lib/paths'
 
 export function HistoryPage(): React.JSX.Element {
-  const {
-    batches,
-    isLoading,
-    error,
-    fetchBatches,
-    revertBatch
-  } = useHistoryStore()
+  const { batches, isLoading, error, fetchBatches, revertBatch } = useHistoryStore()
 
   useTabActivated(fetchBatches)
 
@@ -46,7 +41,7 @@ export function HistoryPage(): React.JSX.Element {
               No operation history found.
             </div>
           ) : (
-            batches.map(batch => (
+            batches.map((batch) => (
               <Card key={batch.id}>
                 <CardHeader className="py-4 px-6 border-b bg-transparent flex flex-row items-center justify-between">
                   <div>
@@ -55,7 +50,12 @@ export function HistoryPage(): React.JSX.Element {
                   </div>
                   <div>
                     {batch.reversible ? (
-                      <Button variant="outline" size="sm" onClick={() => revertBatch(batch.id)} disabled={isLoading}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => revertBatch(batch.id)}
+                        disabled={isLoading}
+                      >
                         <RotateCcw size={14} className="mr-2" />
                         Undo Batch
                       </Button>
@@ -70,11 +70,23 @@ export function HistoryPage(): React.JSX.Element {
                 <CardContent className="p-0">
                   <div className="max-h-64 overflow-y-auto">
                     {batch.items.map((item, idx) => (
-                      <div key={idx} className={`px-6 py-3 border-b text-sm flex gap-4 items-center ${idx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}`}>
-                        <div className="flex-1 truncate text-slate-500" title={item.before}>{item.before.split('/').pop()}</div>
+                      <div
+                        key={idx}
+                        className={`px-6 py-3 border-b text-sm flex gap-4 items-center ${idx % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}`}
+                      >
+                        <div className="flex-1 truncate text-slate-500" title={item.before}>
+                          {basename(item.before)}
+                        </div>
                         <div className="text-slate-300">→</div>
-                        <div className="flex-1 truncate font-medium text-slate-700" title={item.after}>{item.after.split('/').pop()}</div>
-                        <div className={`text-xs font-semibold uppercase ${item.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                        <div
+                          className="flex-1 truncate font-medium text-slate-700"
+                          title={item.after}
+                        >
+                          {basename(item.after)}
+                        </div>
+                        <div
+                          className={`text-xs font-semibold uppercase ${item.status === 'success' ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {item.status}
                         </div>
                       </div>

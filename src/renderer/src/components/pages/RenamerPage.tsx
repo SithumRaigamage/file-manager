@@ -4,6 +4,7 @@ import { useRenamerStore } from '../../store/useRenamerStore'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card'
 import { FilePreviewList, PreviewListItem } from '../shared/FilePreviewList'
+import { basename } from '../../lib/paths'
 
 export function RenamerPage(): React.JSX.Element {
   const {
@@ -42,14 +43,15 @@ export function RenamerPage(): React.JSX.Element {
   const applySteps = () => {
     const steps: any[] = []
     if (localFind) steps.push({ type: 'find_replace', find: localFind, replace: localReplace })
-    if (localPrefix || localSuffix) steps.push({ type: 'prefix_suffix', prefix: localPrefix, suffix: localSuffix })
-    
+    if (localPrefix || localSuffix)
+      steps.push({ type: 'prefix_suffix', prefix: localPrefix, suffix: localSuffix })
+
     updatePattern({ ...pattern, steps })
   }
 
   const mappedPreviewItems: PreviewListItem[] = previewItems.map((item, idx) => ({
     id: String(idx),
-    originalName: item.originalPath.split('/').pop() || '',
+    originalName: basename(item.originalPath),
     newName: item.newName,
     conflict: item.conflict
   }))
@@ -89,7 +91,7 @@ export function RenamerPage(): React.JSX.Element {
                 {currentFolder ? (
                   <div className="text-center px-2">
                     <p className="text-xs font-medium text-slate-700 truncate max-w-full">
-                      {currentFolder.split('/').pop()}
+                      {basename(currentFolder)}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate max-w-full mt-1">
                       {selectedFiles.length} files selected
@@ -113,20 +115,20 @@ export function RenamerPage(): React.JSX.Element {
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-700">Find & Replace</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Find..." 
+                  <input
+                    type="text"
+                    placeholder="Find..."
                     className="w-full text-sm px-3 py-2 border rounded-md"
                     value={localFind}
-                    onChange={e => setLocalFind(e.target.value)}
+                    onChange={(e) => setLocalFind(e.target.value)}
                     onBlur={applySteps}
                   />
-                  <input 
-                    type="text" 
-                    placeholder="Replace..." 
+                  <input
+                    type="text"
+                    placeholder="Replace..."
                     className="w-full text-sm px-3 py-2 border rounded-md"
                     value={localReplace}
-                    onChange={e => setLocalReplace(e.target.value)}
+                    onChange={(e) => setLocalReplace(e.target.value)}
                     onBlur={applySteps}
                   />
                 </div>
@@ -135,25 +137,24 @@ export function RenamerPage(): React.JSX.Element {
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-700">Prefix & Suffix</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Prefix..." 
+                  <input
+                    type="text"
+                    placeholder="Prefix..."
                     className="w-full text-sm px-3 py-2 border rounded-md"
                     value={localPrefix}
-                    onChange={e => setLocalPrefix(e.target.value)}
+                    onChange={(e) => setLocalPrefix(e.target.value)}
                     onBlur={applySteps}
                   />
-                  <input 
-                    type="text" 
-                    placeholder="Suffix..." 
+                  <input
+                    type="text"
+                    placeholder="Suffix..."
                     className="w-full text-sm px-3 py-2 border rounded-md"
                     value={localSuffix}
-                    onChange={e => setLocalSuffix(e.target.value)}
+                    onChange={(e) => setLocalSuffix(e.target.value)}
                     onBlur={applySteps}
                   />
                 </div>
               </div>
-
             </CardContent>
           </Card>
         </div>
@@ -165,12 +166,16 @@ export function RenamerPage(): React.JSX.Element {
               <Eye size={16} />
               Rename Preview
             </h3>
-            <Button size="sm" onClick={() => applyRename()} disabled={previewItems.length === 0 || isLoading}>
+            <Button
+              size="sm"
+              onClick={() => applyRename()}
+              disabled={previewItems.length === 0 || isLoading}
+            >
               <Play size={14} className="mr-2" />
               Execute Rename
             </Button>
           </div>
-          
+
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
               <div className="absolute inset-0 bg-white/40/80 z-10 flex items-center justify-center">
@@ -180,7 +185,7 @@ export function RenamerPage(): React.JSX.Element {
                 </div>
               </div>
             )}
-            
+
             <FilePreviewList items={mappedPreviewItems} />
           </div>
         </div>

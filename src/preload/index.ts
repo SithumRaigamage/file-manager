@@ -1,11 +1,24 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 
+/**
+ * Subscribes to a main→renderer channel and returns an unsubscribe function that
+ * removes exactly this listener — never other subscribers on the same channel.
+ */
+function subscribe<T>(channel: string, callback: (data: T) => void): () => void {
+  const handler = (_event: IpcRendererEvent, data: T): void => callback(data)
+  ipcRenderer.on(channel, handler)
+  return () => {
+    ipcRenderer.removeListener(channel, handler)
+  }
+}
+
 // --- Legacy API exposed to renderer (Kept to prevent UI breakage during migration) ---
 const legacyApi = {
   // Dialog
   openDirectory: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDirectory'),
   openFiles: (): Promise<string[]> => ipcRenderer.invoke('dialog:openFiles'),
-  openPath: (path: string): Promise<void> => ipcRenderer.invoke('shell:openPath', path),
+  openPath: (path: string): Promise<IpcResponse<void>> =>
+    ipcRenderer.invoke('shell:openPath', path),
   showItemInFolder: (path: string): void => ipcRenderer.send('shell:showItemInFolder', path),
 
   // Searcher
@@ -14,16 +27,12 @@ const legacyApi = {
     search: (params: unknown) => ipcRenderer.invoke('searcher:search', params),
     collect: (params: unknown) => ipcRenderer.invoke('searcher:collect', params),
     getFolderNames: (dirPath: string) => ipcRenderer.invoke('searcher:get-folder-names', dirPath),
-    batchSearch: (params: { drivePath: string; queries: string[] }) =>
+    batchSearch: (params: { drivePath: string; queries: string[]; destRoot?: string }) =>
       ipcRenderer.invoke('searcher:batch-search', params),
-    onSearchProgress: (cb: (data: unknown) => void) => {
-      ipcRenderer.on('searcher:progress', (_, data) => cb(data))
-      return () => ipcRenderer.removeAllListeners('searcher:progress')
-    },
-    onCollectProgress: (cb: (data: unknown) => void) => {
-      ipcRenderer.on('searcher:collect-progress', (_, data) => cb(data))
-      return () => ipcRenderer.removeAllListeners('searcher:collect-progress')
-    }
+    onSearchProgress: (cb: (data: unknown) => void): (() => void) =>
+      subscribe('searcher:progress', cb),
+    onCollectProgress: (cb: (data: unknown) => void): (() => void) =>
+      subscribe('searcher:collect-progress', cb)
   },
 
   // MP4 Analyzer
@@ -41,14 +50,10 @@ const legacyApi = {
       ipcRenderer.invoke('mp4analyzer:deleteMultipleFiles', filePaths),
     listScans: () => ipcRenderer.invoke('mp4analyzer:listScans'),
     getScan: (id: string) => ipcRenderer.invoke('mp4analyzer:getScan', id),
-    onProgress: (cb: (data: unknown) => void) => {
-      ipcRenderer.on('mp4analyzer:progress', (_, data) => cb(data))
-      return () => ipcRenderer.removeAllListeners('mp4analyzer:progress')
-    },
-    onRepairProgress: (cb: (data: unknown) => void) => {
-      ipcRenderer.on('mp4analyzer:repairProgress', (_, data) => cb(data))
-      return () => ipcRenderer.removeAllListeners('mp4analyzer:repairProgress')
-    }
+    onProgress: (cb: (data: unknown) => void): (() => void) =>
+      subscribe('mp4analyzer:progress', cb),
+    onRepairProgress: (cb: (data: unknown) => void): (() => void) =>
+      subscribe('mp4analyzer:repairProgress', cb)
   }
 }
 
@@ -71,7 +76,7 @@ export interface OrganizeResult {
 }
 
 export interface SmartRuleDefinition {
-  conditions: any[]
+  conditions: unknown[]
   conditionLogic: 'AND' | 'OR'
   action: { type: 'move' | 'copy'; destination: string }
 }
@@ -81,7 +86,7 @@ export interface RuleSet {
   name: string
   type: 'quick' | 'smart'
   quickRuleId?: 'images' | 'videos' | 'docs' | 'archives'
-  conditions?: any[]
+  conditions?: unknown[]
   conditionLogic?: 'AND' | 'OR'
   action: { type: 'move' | 'copy'; destination: string }
   watchedFolder?: string
@@ -103,7 +108,7 @@ export interface RenameResult {
 export interface RenamePattern {
   id: string
   name: string
-  steps: any[]
+  steps: unknown[]
   createdAt: string
 }
 
@@ -134,7 +139,7 @@ export interface HistoryFilter {
 
 const fileflowApi = {
   organizer: {
-    listFolder: (path: string): Promise<IpcResponse<any[]>> =>
+    listFolder: (path: string): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('organizer:listFolder', path),
     previewQuickRule: (path: string, ruleId: string): Promise<IpcResponse<OrganizePreviewItem[]>> =>
       ipcRenderer.invoke('organizer:previewQuickRule', path, ruleId),
@@ -173,11 +178,8 @@ const fileflowApi = {
       ipcRenderer.invoke('converter:enqueueConversion', paths, presetId),
     cancelConversion: (jobId: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('converter:cancelConversion', jobId),
-    onProgress: (callback: (event: ConversionProgressEvent) => void) => {
-      const handler = (_event: IpcRendererEvent, data: ConversionProgressEvent) => callback(data)
-      ipcRenderer.on('converter:progress', handler)
-      return () => ipcRenderer.removeListener('converter:progress', handler)
-    }
+    onProgress: (callback: (data: ConversionProgressEvent) => void): (() => void) =>
+      subscribe('converter:progress', callback)
   },
   history: {
     listBatches: (filter?: HistoryFilter): Promise<IpcResponse<BatchRecord[]>> =>
@@ -186,15 +188,15 @@ const fileflowApi = {
       ipcRenderer.invoke('history:revertBatch', batchId)
   },
   settings: {
-    get: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:settings:get'),
-    update: (updates: any): Promise<IpcResponse<void>> =>
+    get: (): Promise<IpcResponse<unknown>> => ipcRenderer.invoke('fileflow:settings:get'),
+    update: (updates: unknown): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:settings:update', updates)
   },
   duplicates: {
     scan: (dirPath: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:duplicates:scan', dirPath),
     cancel: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:cancel'),
-    getGroups: (): Promise<IpcResponse<any[]>> =>
+    getGroups: (): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:duplicates:getGroups'),
     clear: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:duplicates:clear'),
     resolve: (
@@ -203,44 +205,38 @@ const fileflowApi = {
       deletePaths: string[]
     ): Promise<IpcResponse<TrashResult>> =>
       ipcRenderer.invoke('fileflow:duplicates:resolve', groupId, keepPath, deletePaths),
-    onProgress: (callback: (data: any) => void) => {
-      const handler = (_event: IpcRendererEvent, data: any) => callback(data)
-      ipcRenderer.on('fileflow:duplicates:progress', handler)
-      return () => ipcRenderer.removeListener('fileflow:duplicates:progress', handler)
-    }
+    onProgress: (callback: (data: unknown) => void): (() => void) =>
+      subscribe('fileflow:duplicates:progress', callback)
   },
   dashboard: {
-    getStats: (): Promise<IpcResponse<any>> => ipcRenderer.invoke('fileflow:dashboard:getStats')
+    getStats: (): Promise<IpcResponse<unknown>> => ipcRenderer.invoke('fileflow:dashboard:getStats')
   },
   indexer: {
     start: (dirPath: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:indexer:start', dirPath),
     cancel: (): Promise<IpcResponse<void>> => ipcRenderer.invoke('fileflow:indexer:cancel'),
-    search: (query: any): Promise<IpcResponse<any[]>> =>
+    search: (query: unknown): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:indexer:search', query),
-    onProgress: (callback: (data: any) => void) => {
-      const handler = (_event: IpcRendererEvent, data: any) => callback(data)
-      ipcRenderer.on('fileflow:indexer:progress', handler)
-      return () => ipcRenderer.removeListener('fileflow:indexer:progress', handler)
-    }
+    onProgress: (callback: (data: unknown) => void): (() => void) =>
+      subscribe('fileflow:indexer:progress', callback)
   },
   analytics: {
-    getLargestFiles: (limit: number): Promise<IpcResponse<any[]>> =>
+    getLargestFiles: (limit: number): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:analytics:getLargestFiles', limit),
-    getStorageAnalytics: (): Promise<IpcResponse<any>> =>
+    getStorageAnalytics: (): Promise<IpcResponse<unknown>> =>
       ipcRenderer.invoke('fileflow:analytics:getStorageAnalytics')
   },
   automation: {
-    listWorkflows: (): Promise<IpcResponse<any[]>> =>
+    listWorkflows: (): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:automation:listWorkflows'),
-    createWorkflow: (workflowData: any): Promise<IpcResponse<{ id: string }>> =>
+    createWorkflow: (workflowData: unknown): Promise<IpcResponse<{ id: string }>> =>
       ipcRenderer.invoke('fileflow:automation:createWorkflow', workflowData),
     triggerWorkflow: (workflowId: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:automation:triggerWorkflow', workflowId)
   },
   tags: {
-    getAll: (): Promise<IpcResponse<any[]>> => ipcRenderer.invoke('fileflow:tags:getAll'),
-    create: (data: { name: string; color?: string }): Promise<IpcResponse<any>> =>
+    getAll: (): Promise<IpcResponse<unknown[]>> => ipcRenderer.invoke('fileflow:tags:getAll'),
+    create: (data: { name: string; color?: string }): Promise<IpcResponse<unknown>> =>
       ipcRenderer.invoke('fileflow:tags:create', data),
     delete: (id: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:tags:delete', id),
@@ -248,15 +244,18 @@ const fileflowApi = {
       ipcRenderer.invoke('fileflow:tags:assignToFile', filePath, tagId),
     removeFromFile: (filePath: string, tagId: string): Promise<IpcResponse<void>> =>
       ipcRenderer.invoke('fileflow:tags:removeFromFile', filePath, tagId),
-    getTagsForFile: (filePath: string): Promise<IpcResponse<any[]>> =>
+    getTagsForFile: (filePath: string): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:tags:getTagsForFile', filePath)
   },
   ai: {
     checkStatus: (): Promise<IpcResponse<{ isAvailable: boolean; message?: string }>> =>
       ipcRenderer.invoke('fileflow:ai:checkStatus'),
-    suggestCategories: (folderPath: string, categories: string[]): Promise<IpcResponse<any[]>> =>
+    suggestCategories: (
+      folderPath: string,
+      categories: string[]
+    ): Promise<IpcResponse<unknown[]>> =>
       ipcRenderer.invoke('fileflow:ai:suggestCategories', folderPath, categories),
-    executeCommand: (query: string): Promise<IpcResponse<{ message: string; details?: any }>> =>
+    executeCommand: (query: string): Promise<IpcResponse<{ message: string; details?: unknown }>> =>
       ipcRenderer.invoke('fileflow:ai:executeCommand', query)
   }
 }

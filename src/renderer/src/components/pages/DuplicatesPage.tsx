@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { Progress } from '../ui/Progress'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card'
 import { FolderOpen, Layers, Check, Trash2, ShieldAlert } from 'lucide-react'
+import { basename } from '../../lib/paths'
 
 export function DuplicatesPage(): React.JSX.Element {
   const {
@@ -204,7 +205,7 @@ export function DuplicatesPage(): React.JSX.Element {
                       />
                       <div className="flex-1 overflow-hidden">
                         <p className="font-medium truncate" title={file.path}>
-                          {file.path.split('/').pop() || file.path.split('\\').pop()}
+                          {basename(file.path)}
                         </p>
                         <p
                           className="text-xs text-muted-foreground truncate opacity-70"

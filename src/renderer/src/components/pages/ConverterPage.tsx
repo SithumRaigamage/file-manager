@@ -4,6 +4,7 @@ import { useConverterStore } from '../../store/useConverterStore'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { FilePreviewList, PreviewListItem } from '../shared/FilePreviewList'
+import { basename, stem } from '../../lib/paths'
 
 export function ConverterPage(): React.JSX.Element {
   const {
@@ -61,7 +62,7 @@ export function ConverterPage(): React.JSX.Element {
     if (!isJob) {
       mappedPreviewItems.push({
         id: `pending-${idx}`,
-        originalName: file.split('/').pop() || '',
+        originalName: basename(file),
         newName: `Will convert to ${preset?.targetContainer || '...'}`,
         status: 'pending'
       })
@@ -72,8 +73,8 @@ export function ConverterPage(): React.JSX.Element {
   jobList.forEach((job) => {
     mappedPreviewItems.push({
       id: job.id,
-      originalName: job.inputPath.split('/').pop() || '',
-      newName: `${job.inputPath.split('/').pop()?.split('.')[0]}_converted.${preset?.targetContainer || 'mp4'}`,
+      originalName: basename(job.inputPath),
+      newName: `${stem(job.inputPath)}_converted.${preset?.targetContainer || 'mp4'}`,
       status: job.status,
       progress: job.progress
     })

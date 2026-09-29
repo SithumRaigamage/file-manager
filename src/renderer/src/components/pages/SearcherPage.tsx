@@ -40,13 +40,12 @@ import {
 import { useSearcherStore, ViewMode, SearchResult, Drive } from '../../store/searcherStore'
 import { AutomationPreview } from '../searcher/AutomationPreview'
 import { toMediaUrl } from '../../lib/media-url'
+import { basename, dirname, pathDepth } from '../../lib/paths'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getBasename(fullPath: string | null): string {
-  if (!fullPath) return ''
-  const parts = fullPath.split(/[/\\]/)
-  return parts[parts.length - 1] || fullPath
+  return fullPath ? basename(fullPath) : ''
 }
 
 function formatBytes(bytes: number): string {
@@ -318,16 +317,14 @@ function TreeView({
 
   // Sort parents by depth so shallower come first
   const sortedParents = [...grouped.keys()].sort((a, b) => {
-    const aDepth = a.split('/').length
-    const bDepth = b.split('/').length
-    return aDepth - bDepth
+    return pathDepth(a) - pathDepth(b)
   })
 
   return (
     <div className="flex flex-col gap-4 p-4">
       {sortedParents.map((parent) => {
         const items = grouped.get(parent)!
-        const isRoot = !allParents.has(parent.split('/').slice(0, -1).join('/'))
+        const isRoot = !allParents.has(dirname(parent))
         return (
           <div key={parent} className={`${!isRoot ? 'ml-6' : ''}`}>
             {/* Parent label */}

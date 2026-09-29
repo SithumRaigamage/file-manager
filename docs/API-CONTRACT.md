@@ -77,6 +77,14 @@ type IpcResponse<T> =
 
 - `deleteFile(filePath)` / `deleteMultipleFiles(filePaths) → IpcResponse<TrashResult>` — files only, to the Trash, after a main-process confirmation. (The former "delete containing folder" option and the `scannedFolder` parameter were removed.)
 
+### Event subscriptions (2026-09-29)
+
+- Every `on*` subscription returns an unsubscribe function that removes **only that listener**; other subscribers on the same channel are unaffected.
+
+### `fileflow.settings` (2026-09-29)
+
+- `update(patch)` accepts only `ffmpegPath` (string ≤ 4096 chars or null), `defaultDestructiveBehavior` (`prompt` | `always-copy`), `reducedMotion` / `telemetryOptIn` / `crashReportingOptIn` (boolean), `historyRetentionDays` (integer 1–3650), `mp4HistoryLimit` (integer 0–1000). Anything else → `INVALID_SETTINGS`; `id` is never writable.
+
 ### `api.mp4analyzer` — scan history (post-MVP, added 2026-09-27)
 
 Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder` actions (completed or cancelled; superseded scans are not saved).
@@ -114,4 +122,4 @@ Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder`
 
 ## Error Codes (initial set — expand as needed)
 
-- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`, `UNKNOWN_PRESET`, `INVALID_INPUT`, `OPEN_BLOCKED`, `OPEN_FAILED`, `INVALID_PATH`.
+- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`, `NOT_FOUND`, `TRASH_FAILED`, `GROUP_NOT_FOUND`, `INVALID_RESOLUTION`, `RESOLVE_FAILED`, `UNKNOWN_PRESET`, `INVALID_INPUT`, `OPEN_BLOCKED`, `OPEN_FAILED`, `INVALID_PATH`, `INVALID_SETTINGS`, `SETTINGS_GET_FAILED`, `SETTINGS_UPDATE_FAILED`.
