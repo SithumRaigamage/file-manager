@@ -106,7 +106,7 @@ function LargeIconCard({
       onClick={() => onSelect(item)}
       className="relative flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/40 border-white/20 hover:border-violet-300 hover:shadow-lg hover:bg-violet-50/10 active:scale-97 cursor-pointer transition-all group"
     >
-      <button
+      <button aria-label="Remove from results"
         onClick={(e) => {
           e.stopPropagation()
           onRemove(item.fullPath)
@@ -166,7 +166,7 @@ function TileCard({
             +{item.childCount}
           </span>
         )}
-        <button
+        <button aria-label="Remove from results"
           onClick={(e) => {
             e.stopPropagation()
             onRemove(item.fullPath)
@@ -205,7 +205,7 @@ function ListRow({
             +{item.childCount}
           </span>
         )}
-        <button
+        <button aria-label="Remove from results"
           onClick={(e) => {
             e.stopPropagation()
             onRemove(item.fullPath)
@@ -279,7 +279,7 @@ function DetailsTable({
                 {item.parentPath}
               </td>
               <td className="px-4 py-2 whitespace-nowrap text-right">
-                <button
+                <button aria-label={`Remove ${item.name} from results`}
                   onClick={(e) => {
                     e.stopPropagation()
                     onRemove(item.fullPath)
@@ -357,7 +357,7 @@ function TreeView({
                         {formatBytes(item.size)}
                       </span>
                     )}
-                    <button
+                    <button aria-label={`Remove ${item.name} from results`}
                       onClick={(e) => {
                         e.stopPropagation()
                         onRemove(item.fullPath)
@@ -416,7 +416,7 @@ function DriveDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1 bg-white/40 backdrop-blur-md border border-white/40 border-white/30 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
+            className="absolute top-full left-0 mt-1 bg-white/95 backdrop-blur-md border border-white/40 border-white/30 rounded-xl shadow-lg z-50 min-w-[220px] overflow-hidden"
           >
             {drives.length === 0 ? (
               <p className="text-xs text-gray-400 px-4 py-3">No drives found</p>
@@ -919,7 +919,7 @@ export function SearcherPage(): React.ReactElement {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-transparent/30 overflow-hidden">
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         {/* Top Header with Tabs */}
         <div className="bg-white/5 backdrop-blur-md border-b border-white/20 border-white/30 px-6 pt-4 shrink-0 shadow-sm z-10">
@@ -1025,7 +1025,7 @@ export function SearcherPage(): React.ReactElement {
                   className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-white/30 bg-transparent text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 focus:bg-white/40 transition-all font-medium"
                 />
                 {query.trim() && (
-                  <button
+                  <button aria-label="Save keyword"
                     onClick={() => saveKeyword(query)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-all opacity-0 group-hover:opacity-100 focus:outline-none"
                     title="Save keyword"
@@ -1077,7 +1077,7 @@ export function SearcherPage(): React.ReactElement {
                       className="w-full pl-8 pr-3 py-1 rounded-lg border border-white/20 bg-transparent text-[11px] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-violet-200 focus:border-violet-300 focus:bg-white/40 transition-all font-medium"
                     />
                     {keywordFilter && (
-                      <button
+                      <button aria-label="Clear keyword filter"
                         onClick={() => setKeywordFilter('')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
                       >
@@ -1104,7 +1104,7 @@ export function SearcherPage(): React.ReactElement {
                         >
                           {kw}
                         </button>
-                        <button
+                        <button aria-label={`Remove keyword ${kw}`}
                           onClick={() => removeKeyword(kw)}
                           className="ml-1.5 p-0.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
                         >
@@ -1478,7 +1478,7 @@ export function SearcherPage(): React.ReactElement {
                             <span className="text-xs font-mono font-medium text-gray-700 truncate">
                               {kw}
                             </span>
-                            <button
+                            <button aria-label={`Discard keyword ${kw}`}
                               onClick={() =>
                                 setScannedKeywords((prev) => prev.filter((k) => k !== kw))
                               }
@@ -1648,7 +1648,7 @@ export function SearcherPage(): React.ReactElement {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="shrink-0 bg-white/40 backdrop-blur-md border border-white/40-t border-white/20 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
+            className="shrink-0 bg-white/40 backdrop-blur-md border border-t border-white/20 px-5 py-3 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.04)]"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
@@ -1720,7 +1720,7 @@ export function SearcherPage(): React.ReactElement {
                     {activePlaybackVideo.fullPath}
                   </p>
                 </div>
-                <button
+                <button aria-label="Close video player"
                   onClick={() => setActivePlaybackVideo(null)}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all cursor-pointer inline-flex items-center justify-center"
                 >
@@ -1754,7 +1754,7 @@ export function SearcherPage(): React.ReactElement {
               </div>
 
               {/* Modal Footer Info */}
-              <div className="p-4 bg-gray-950/60 border-t border-gray-850 flex items-center justify-between text-[11px] text-gray-400">
+              <div className="p-4 bg-gray-950/60 border-t border-gray-800 flex items-center justify-between text-[11px] text-gray-400">
                 <span>Size: {formatBytes(activePlaybackVideo.size)}</span>
                 <span className="font-mono">
                   {activePlaybackVideo.extension.toUpperCase()} Format

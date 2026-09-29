@@ -52,6 +52,7 @@ export const appSettings = sqliteTable('app_settings', {
   crashReportingOptIn: integer('crash_reporting_opt_in', { mode: 'boolean' }).notNull().default(false),
   historyRetentionDays: integer('history_retention_days').notNull().default(90),
   mp4HistoryLimit: integer('mp4_history_limit').notNull().default(20), // keep newest N MP4 scans; <= 0 keeps all
+  theme: text('theme', { enum: ['light', 'dark', 'system'] }).notNull().default('system'),
 });
 
 export const searchIndex = sqliteTable('search_index', {

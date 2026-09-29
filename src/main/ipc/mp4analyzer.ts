@@ -52,6 +52,7 @@ import { checkBasicFile } from '../domain/mp4analyzer/diagnosis'
 import { isRepairId, buildRepairArgs, repairOutputPath } from '../domain/mp4analyzer/repair'
 import { resolveUniquePath } from '../domain/shared/unique-path'
 import { csvRow } from '../domain/shared/csv'
+import { ffmpegProgressPercent } from '../domain/shared/ffmpeg-progress'
 import type { IntegrityCheckResult } from '../domain/mp4analyzer/diagnosis'
 
 async function runFFprobeAnalysis(
@@ -419,17 +420,25 @@ export function registerMp4AnalyzerHandlers(): void {
         const ffmpegPath = await resolveFFmpegPath()
         const repairedPath = resolveUniquePath(repairOutputPath(filePath))
         const args = buildRepairArgs(repairId, filePath, repairedPath)
+        // Duration lets progress be reported as a real percentage
+        const durationSeconds = await resolveFFprobePath()
+          .then((probe) => runFFprobeAnalysis(filePath, probe))
+          .then((meta) => meta?.duration ?? 0)
+          .catch(() => 0)
 
         return await new Promise((resolve) => {
           const proc = spawn(ffmpegPath, args)
           activeProcesses.add(proc)
 
           let stderr = ''
+          let lastProgress = -1
           proc.stderr.on('data', (data: Buffer) => {
             const text = data.toString()
             stderr += text
-            if (/time=\s*\d+:\d+:\d+/.test(text)) {
-              event.sender.send('mp4analyzer:repairProgress', { filePath, progress: 50 })
+            const progress = ffmpegProgressPercent(text, durationSeconds)
+            if (progress !== null && progress > lastProgress) {
+              lastProgress = progress
+              event.sender.send('mp4analyzer:repairProgress', { filePath, progress })
             }
           })
 

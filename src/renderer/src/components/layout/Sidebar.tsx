@@ -1,6 +1,19 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { FolderOpen, Type, RefreshCw, Search, Settings, ShieldCheck, History, Layers, HardDrive, Zap, Wrench } from 'lucide-react'
+import {
+  FolderOpen,
+  Type,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldCheck,
+  History,
+  Layers,
+  HardDrive,
+  Zap,
+  Wrench,
+  ScanSearch
+} from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { motion } from 'framer-motion'
 
@@ -58,6 +71,15 @@ const navItems = [
     color: 'text-amber-600',
     activeBg: 'bg-amber-50',
     activeBar: 'bg-amber-500'
+  },
+  {
+    to: '/drive-search',
+    icon: ScanSearch,
+    label: 'Drive Search',
+    description: 'Search, collect & auto-sort',
+    color: 'text-orange-600',
+    activeBg: 'bg-orange-50',
+    activeBar: 'bg-orange-500'
   },
   {
     to: '/toolkits',
@@ -136,7 +158,9 @@ export function Sidebar(): React.ReactElement {
               to={item.to}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group cursor-pointer',
-                isActive ? `${item.activeBg} shadow-sm border border-white/50 backdrop-blur-sm` : 'hover:bg-white/40 hover:shadow-sm hover:border hover:border-white/30 border border-transparent'
+                isActive
+                  ? `${item.activeBg} shadow-sm border border-white/50 backdrop-blur-sm`
+                  : 'hover:bg-white/40 hover:shadow-sm hover:border hover:border-white/30 border border-transparent'
               )}
             >
               {isActive && (
@@ -172,9 +196,11 @@ export function Sidebar(): React.ReactElement {
 
       {/* Footer */}
       <div className="p-3 border-t border-white/30 no-drag-region">
-        <NavLink 
+        <NavLink
           to="/settings"
-          className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer border ${isActive ? 'bg-white/50 text-gray-900 shadow-sm border-white/50' : 'text-gray-500 hover:bg-white/40 hover:text-gray-700 hover:shadow-sm hover:border-white/30 border-transparent'}`}
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer border ${isActive ? 'bg-white/50 text-gray-900 shadow-sm border-white/50' : 'text-gray-500 hover:bg-white/40 hover:text-gray-700 hover:shadow-sm hover:border-white/30 border-transparent'}`
+          }
         >
           <Settings size={16} />
           <span className="text-xs font-semibold">Settings</span>

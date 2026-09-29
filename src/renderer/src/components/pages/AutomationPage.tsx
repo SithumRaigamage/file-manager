@@ -71,7 +71,7 @@ export function AutomationPage() {
                         {wf.trigger}
                       </span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Button aria-label="Workflow options" variant="ghost" size="sm" className="h-8 w-8 p-0">
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </div>

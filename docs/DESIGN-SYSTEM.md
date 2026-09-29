@@ -26,9 +26,20 @@
 
 Dark mode is the default given the target user (creative professionals, long editing sessions); light mode fully supported via the same CSS variable set, toggle available in Settings and respecting OS-level appearance settings by default.
 
+Implementation (2026-09-29): `AppSettings.theme` = `light` | `dark` | `system` (default `system`), applied by `AppearanceProvider` as a `dark` class on `<html>`. `assets/theme-dark.css` is **generated** from Tailwind's `theme.css` by mirroring each palette scale (50↔950 … 400↔600), so existing utility classes flip without per-component `dark:` variants. Regenerate it after a Tailwind upgrade; don't hand-edit. Avoid raw hex colors in components — they bypass the theme.
+
 ## Motion
 
 See USER-EXPERIENCE.md for interaction philosophy. Implementation constraint: all Framer Motion transitions must respect `prefers-reduced-motion` at the OS level and the in-app `reducedMotion` setting (see DATA-MODEL.md `AppSettings`).
+
+Implementation (2026-09-29): `AppearanceProvider` wraps the app in `<MotionConfig reducedMotion>` (`always` when the in-app flag is on, otherwise `user`, which follows the OS), and CSS in `main.css` neutralises animations/transitions for both `prefers-reduced-motion` and the `reduce-motion` class.
+
+## Feedback, Errors & Accessibility
+
+- Notifications use `toast.success/error/info` (`store/useToastStore.ts`, rendered by `<Toaster />`) — never `alert()`. Errors are announced with `role="alert"`.
+- Each page renders inside an `ErrorBoundary`, so a crash is contained to that page with a "Try again" action.
+- Icon-only buttons must have an `aria-label`; `<Switch>` requires a `label` prop.
+- Panels that float over other content (drawers, popovers, loading overlays) use ≥ 85% opaque backgrounds.
 
 ## Responsive Rules
 

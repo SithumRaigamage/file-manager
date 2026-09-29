@@ -16,7 +16,10 @@ interface FilePreviewListProps {
   rowHeight?: number
 }
 
-export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps): React.JSX.Element {
+export function FilePreviewList({
+  items,
+  rowHeight = 40
+}: FilePreviewListProps): React.JSX.Element {
   const parentRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({
@@ -35,8 +38,8 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
   }
 
   return (
-    <div 
-      ref={parentRef} 
+    <div
+      ref={parentRef}
       className="flex-1 overflow-auto border rounded-md bg-white/40 w-full shadow-sm"
     >
       <div
@@ -62,7 +65,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               <div className="flex-1 truncate text-slate-600" title={item.originalName}>
                 {item.originalName}
               </div>
-              
+
               <div className="text-slate-400 shrink-0 text-xs">
                 {item.action ? `(${item.action}) →` : '→'}
               </div>
@@ -80,7 +83,7 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               {item.progress !== undefined && (
                 <div className="shrink-0 w-24">
                   <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-blue-500 transition-all duration-300"
                       style={{ width: `${item.progress}%` }}
                     />
@@ -89,13 +92,15 @@ export function FilePreviewList({ items, rowHeight = 40 }: FilePreviewListProps)
               )}
 
               {item.status && (
-                <div className={`shrink-0 w-20 text-xs font-medium text-right capitalize
+                <div
+                  className={`shrink-0 w-20 text-xs font-medium text-right capitalize
                   ${item.status === 'success' || item.status === 'completed' ? 'text-green-600' : ''}
                   ${item.status === 'failed' ? 'text-red-600' : ''}
                   ${item.status === 'skipped' ? 'text-orange-500' : ''}
                   ${item.status === 'processing' ? 'text-blue-600' : ''}
                   ${item.status === 'pending' ? 'text-slate-400' : ''}
-                `}>
+                `}
+                >
                   {item.status}
                 </div>
               )}

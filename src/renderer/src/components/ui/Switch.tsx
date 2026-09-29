@@ -1,17 +1,25 @@
+import React from 'react'
 
 interface SwitchProps {
   checked: boolean
   onChange: (checked: boolean) => void
   disabled?: boolean
+  /** Accessible name — required for screen readers since the switch has no visible text. */
+  label: string
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function Switch({ checked, onChange, disabled = false }: SwitchProps) {
+export function Switch({
+  checked,
+  onChange,
+  disabled = false,
+  label
+}: SwitchProps): React.JSX.Element {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`

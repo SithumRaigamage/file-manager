@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FolderOpen, Zap, Type, RefreshCw, HardDrive, ShieldCheck, History, Layers } from 'lucide-react';
+import { Search, FolderOpen, Zap, Type, RefreshCw, HardDrive, ShieldCheck, History, Layers, ScanSearch } from 'lucide-react';
 
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,6 +45,7 @@ export function CommandPalette() {
     { label: 'Renamer', path: '/renamer', icon: <Type className="w-4 h-4 text-violet-500" /> },
     { label: 'Converter', path: '/converter', icon: <RefreshCw className="w-4 h-4 text-emerald-500" /> },
     { label: 'Advanced Search', path: '/searcher', icon: <Search className="w-4 h-4 text-amber-500" /> },
+    { label: 'Drive Search', path: '/drive-search', icon: <ScanSearch className="w-4 h-4 text-orange-500" /> },
     { label: 'Storage Analytics', path: '/analytics', icon: <HardDrive className="w-4 h-4 text-teal-500" /> },
     { label: 'MP4 Analyzer', path: '/mp4-analyzer', icon: <ShieldCheck className="w-4 h-4 text-rose-500" /> },
     { label: 'Duplicates', path: '/duplicates', icon: <Layers className="w-4 h-4 text-cyan-500" /> },

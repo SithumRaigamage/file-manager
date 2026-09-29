@@ -1,10 +1,13 @@
 import React, { Suspense, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { TabActiveContext } from '../../lib/tab-activity'
+import { ErrorBoundary } from '../shared/ErrorBoundary'
 
 export interface KeepAliveRoute {
   path: string
   element: React.ReactNode
+  /** Human name for error messages, e.g. "Duplicates". */
+  label?: string
 }
 
 /**
@@ -44,7 +47,9 @@ export function KeepAliveRoutes({ routes }: { routes: KeepAliveRoute[] }): React
               aria-hidden={!isActive}
             >
               <TabActiveContext.Provider value={isActive}>
-                <Suspense fallback={<PageLoading />}>{r.element}</Suspense>
+                <ErrorBoundary label={r.label}>
+                  <Suspense fallback={<PageLoading />}>{r.element}</Suspense>
+                </ErrorBoundary>
               </TabActiveContext.Provider>
             </div>
           )

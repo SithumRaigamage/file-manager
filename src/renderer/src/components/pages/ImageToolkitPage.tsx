@@ -83,7 +83,7 @@ export function ImageToolkitPage(): React.JSX.Element {
                   <img src={imageSrc} alt="Preview" className="max-h-64 object-contain mx-auto rounded-lg shadow-sm" />
                   <button 
                     onClick={() => setImageSrc(null)}
-                    className="absolute top-2 right-2 px-3 py-1 bg-white/40/80 backdrop-blur text-xs font-medium rounded shadow hover:bg-white/40 transition-colors"
+                    className="absolute top-2 right-2 px-3 py-1 bg-white/85 backdrop-blur-sm backdrop-blur text-xs font-medium rounded shadow hover:bg-white/40 transition-colors"
                   >
                     Clear
                   </button>

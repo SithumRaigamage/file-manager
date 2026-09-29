@@ -218,7 +218,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportCsv}
             disabled={exporting !== null}
-            className="w-full py-2 border border-emerald-250 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 active:bg-emerald-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'csv' ? 'Exporting...' : 'Save CSV Report'}
@@ -239,7 +239,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportJson}
             disabled={exporting !== null}
-            className="w-full py-2 border border-blue-250 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'json' ? 'Exporting...' : 'Save JSON Report'}
@@ -261,7 +261,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
           <button
             onClick={handleExportPdf}
             disabled={exporting !== null}
-            className="w-full py-2 border border-indigo-250 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:bg-indigo-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:bg-indigo-200 transition-all font-semibold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Download size={14} />
             {exporting === 'pdf' ? 'Generating...' : 'Save PDF Report'}

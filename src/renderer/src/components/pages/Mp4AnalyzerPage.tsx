@@ -115,7 +115,7 @@ export function Mp4AnalyzerPage(): React.JSX.Element {
     progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-transparent/20">
+    <div className="flex-1 overflow-hidden flex flex-col p-6 space-y-6 bg-transparent">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>

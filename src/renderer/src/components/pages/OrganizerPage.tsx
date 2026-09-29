@@ -238,7 +238,7 @@ export function OrganizerPage(): React.JSX.Element {
 
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
-              <div className="absolute inset-0 bg-white/40/80 z-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-10 flex items-center justify-center">
                 <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 shadow-sm max-w-md text-center">
                   <p className="font-semibold">Error</p>
                   <p className="text-sm mt-1">{error}</p>

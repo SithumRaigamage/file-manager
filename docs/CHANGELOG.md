@@ -149,3 +149,15 @@ B1, B6 and B9 were already resolved in Phase 2.
 - **P5**: Inter is bundled via `@fontsource/inter`; Google Fonts links and CSP allowances removed — the app now works fully offline.
 - **Found — needs a product decision**: `components/pages/SearcherPage.tsx` is not imported or routed anywhere (the sidebar's "Advanced Search" opens `AdvancedSearchPage`). Its main-process handlers remain reachable over IPC and are covered by the Phase 1/4 fixes; the page itself is currently dead UI.
 - Tests: `tests/unit/performance.spec.ts`.
+
+## 2026-09-29 — Audit Phase 5: UI/UX and accessibility (U1–U7)
+
+- **Drive Search routed** (decision by the user at the Phase 4 gate): `SearcherPage` is now reachable at `/drive-search` from the sidebar and command palette.
+- **U1**: reduced motion is enforced — `<MotionConfig>` for Framer Motion plus CSS for animations/transitions, honouring both the in-app setting and the OS preference.
+- **U2**: fixed 19 invalid Tailwind classes, which had rendered with no style (nonexistent shades such as `text-red-655`, `bg-transparent/30`, `border-white/40-t`, and double opacity like `bg-white/40/80`, which left four loading overlays with no background at all). The Drive Search drive dropdown is now opaque.
+- **U3**: dark mode. New `AppSettings.theme` (`light`/`dark`/`system`, **default `system`** per DESIGN-SYSTEM.md), DB migration, validation and a Settings control. Implemented as a generated mirrored palette (`assets/theme-dark.css`); verified by screenshots of Dashboard, Duplicates and Settings in both themes.
+- **U4**: `alert()` replaced by an app-wide toast system; the Duplicates inline banner also uses toasts.
+- **U5**: 19 icon-only buttons gained `aria-label`s; `Switch` now requires a `label` (Settings switches labelled; Theme select labelled).
+- **U6**: every page renders inside an `ErrorBoundary` with a retry action.
+- **U7**: MP4 repair progress is a real percentage (FFmpeg `time=` over the probed duration, `domain/shared/ffmpeg-progress.ts`) instead of a fixed 50%.
+- Tests: `tests/unit/ux.spec.ts`, `tests/e2e/ux.spec.ts` (route, theme + reduced-motion classes, accessible names).

@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTabActivated } from '../../lib/tab-activity'
 import { useDuplicateStore } from '../../store/useDuplicateStore'
+import { toast } from '../../store/useToastStore'
 import { Button } from '../ui/Button'
 import { Progress } from '../ui/Progress'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card'
@@ -37,19 +38,14 @@ export function DuplicatesPage(): React.JSX.Element {
     startScan(selectedFolder)
   }
 
-  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
-
   const handleResolve = async (groupId: string): Promise<void> => {
     const keepPath = selections[groupId]
     if (!keepPath) return
     const outcome = await resolveGroup(groupId, keepPath)
     if (outcome.status === 'resolved') {
-      setNotice({
-        tone: 'success',
-        text: `Moved ${outcome.trashed} duplicate${outcome.trashed === 1 ? '' : 's'} to the Trash.`
-      })
+      toast.success(`Moved ${outcome.trashed} duplicate${outcome.trashed === 1 ? '' : 's'} to the Trash.`)
     } else if (outcome.status === 'error') {
-      setNotice({ tone: 'error', text: outcome.message })
+      toast.error(outcome.message)
     }
   }
 
@@ -123,19 +119,6 @@ export function DuplicatesPage(): React.JSX.Element {
               />
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {notice && (
-        <div className="px-6 pb-6 shrink-0" role="status">
-          <div
-            className={`p-4 rounded-md flex items-center justify-between ${notice.tone === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-destructive/10 text-destructive'}`}
-          >
-            <span>{notice.text}</span>
-            <button className="text-sm underline" onClick={() => setNotice(null)}>
-              Dismiss
-            </button>
-          </div>
         </div>
       )}
 

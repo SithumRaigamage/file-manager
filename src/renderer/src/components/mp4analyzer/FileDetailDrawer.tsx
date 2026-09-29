@@ -21,6 +21,7 @@ import {
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { toast } from '../../store/useToastStore'
 import { toMediaUrl } from '../../lib/media-url'
 import { formatBytes, formatDuration as formatDurationBase } from '../../lib/utils'
 import { getHealthScore } from '../../lib/mp4-health'
@@ -144,11 +145,11 @@ export function FileDetailDrawer({
   const getConfidenceColor = (conf: 'high' | 'medium' | 'low'): string => {
     switch (conf) {
       case 'high':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-250'
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200'
       case 'medium':
-        return 'bg-amber-50 text-amber-700 border-amber-250'
+        return 'bg-amber-50 text-amber-700 border-amber-200'
       case 'low':
-        return 'bg-rose-50 text-rose-700 border-rose-250'
+        return 'bg-rose-50 text-rose-700 border-rose-200'
     }
   }
 
@@ -187,7 +188,7 @@ export function FileDetailDrawer({
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {!file.missingOnDisk && (
-                  <button
+                  <button aria-label="Open file location in Finder"
                     onClick={() => window.api.showItemInFolder(file.filePath)}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
                     title="Open file location in Finder"
@@ -196,10 +197,10 @@ export function FileDetailDrawer({
                   </button>
                 )}
                 {file.corruptionLevel !== 'healthy' && !file.missingOnDisk && (
-                  <button
+                  <button aria-label="Move corrupted video to Trash"
                     onClick={async () => {
                       const error = await trashFiles([file.filePath])
-                      if (error) alert(error)
+                      if (error) toast.error(error)
                       else if (
                         !useMp4AnalyzerStore
                           .getState()
@@ -207,13 +208,13 @@ export function FileDetailDrawer({
                       )
                         onClose()
                     }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-655 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
                     title="Move corrupted video to Trash"
                   >
                     <Trash2 size={18} />
                   </button>
                 )}
-                <button
+                <button aria-label="Close details"
                   onClick={onClose}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 transition-all cursor-pointer inline-flex items-center justify-center"
                 >
@@ -230,7 +231,7 @@ export function FileDetailDrawer({
             )}
 
             {/* Sub-Header Tabs */}
-            <div className="flex px-4 border-b border-gray-200 bg-transparent/20 text-xs font-semibold text-gray-500">
+            <div className="flex px-4 border-b border-gray-200 bg-transparent text-xs font-semibold text-gray-500">
               <button
                 onClick={() => setActiveTab('diagnostics')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
@@ -309,7 +310,7 @@ export function FileDetailDrawer({
                         <h4 className="text-xs font-bold uppercase tracking-wider text-red-900">
                           Diagnostics Error
                         </h4>
-                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-850">
+                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-800">
                           {file.errorMsg}
                         </p>
                       </div>
@@ -412,7 +413,7 @@ export function FileDetailDrawer({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Terminal size={14} className="stroke-[2.2]" /> Repair & Recovery Tools
                     </h3>
-                    <div className="p-4 bg-transparent border border-gray-150 rounded-2xl space-y-4">
+                    <div className="p-4 bg-transparent border border-gray-200 rounded-2xl space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="text-xs text-gray-600 font-medium leading-relaxed">
                           {file.recommendation.action}
@@ -430,7 +431,7 @@ export function FileDetailDrawer({
                             <div className="bg-gray-900 rounded-xl p-3.5 pr-12 font-mono text-xs text-blue-400 break-all select-all leading-normal">
                               {file.recommendation.command}
                             </div>
-                            <button
+                            <button aria-label="Copy repair command"
                               onClick={() => copyToClipboard(file.recommendation.command!)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all cursor-pointer flex items-center justify-center"
                               title="Copy repair command"
@@ -494,7 +495,7 @@ export function FileDetailDrawer({
                             )}
 
                             {repairStatus === 'error' && (
-                              <div className="bg-red-50 border border-red-150 rounded-xl p-3.5 space-y-2 text-xs text-red-800">
+                              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-2 text-xs text-red-800">
                                 <div className="font-bold text-red-900 flex items-center gap-1.5">
                                   <AlertTriangle size={14} className="stroke-[2.2]" />
                                   Automatic Repair Failed
@@ -577,7 +578,7 @@ export function FileDetailDrawer({
                             >
                               <span className="text-gray-300">└─</span>
                               <span
-                                className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-650'}`}
+                                className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-600'}`}
                               >
                                 {name}
                               </span>
@@ -634,7 +635,7 @@ export function FileDetailDrawer({
                 <button
                   onClick={async () => {
                     const error = await trashFiles([file.filePath])
-                    if (error) alert(error)
+                    if (error) toast.error(error)
                     else if (
                       !useMp4AnalyzerStore
                         .getState()

@@ -6,6 +6,7 @@ export interface SettingsUpdate {
   crashReportingOptIn?: boolean
   historyRetentionDays?: number
   mp4HistoryLimit?: number
+  theme?: 'light' | 'dark' | 'system'
 }
 
 type Validator = (value: unknown) => boolean
@@ -24,7 +25,8 @@ const RULES: Record<keyof SettingsUpdate, Validator> = {
   telemetryOptIn: isBoolean,
   crashReportingOptIn: isBoolean,
   historyRetentionDays: intBetween(1, 3650),
-  mp4HistoryLimit: intBetween(0, 1000)
+  mp4HistoryLimit: intBetween(0, 1000),
+  theme: (v) => v === 'light' || v === 'dark' || v === 'system'
 }
 
 export type SettingsUpdateResult =

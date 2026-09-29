@@ -5,6 +5,7 @@ import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 import { formatBytes, formatDuration } from '../../lib/utils'
 import { getHealthScore } from '../../lib/mp4-health'
+import { toast } from '../../store/useToastStore'
 
 interface ResultsTableProps {
   results: Mp4FileResult[]
@@ -64,7 +65,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
     const filePaths = corruptedFiles.map((r) => r.filePath)
     if (filePaths.length === 0) return
     const error = await trashFiles(filePaths)
-    if (error) alert(error)
+    if (error) toast.error(error)
   }
 
   const filteredResults = useMemo(() => {
@@ -167,7 +168,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/20 bg-transparent/30 text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
+              <tr className="border-b border-white/20 bg-transparent text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
                 <th
                   className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('fileName')}
@@ -260,7 +261,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         {!r.missingOnDisk && (
-                          <button
+                          <button aria-label="Open file location in Finder"
                             onClick={(e) => {
                               e.stopPropagation()
                               window.api.showItemInFolder(r.filePath)
@@ -271,7 +272,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                             <FolderOpen size={16} />
                           </button>
                         )}
-                        <button
+                        <button aria-label="View detailed diagnostics"
                           onClick={(e) => {
                             e.stopPropagation()
                             onSelectFile(r)
@@ -282,13 +283,13 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                           <Eye size={16} />
                         </button>
                         {r.corruptionLevel !== 'healthy' && !r.missingOnDisk && (
-                          <button
+                          <button aria-label="Move corrupted video to Trash"
                             onClick={async (e) => {
                               e.stopPropagation()
                               const error = await trashFiles([r.filePath])
-                              if (error) alert(error)
+                              if (error) toast.error(error)
                             }}
-                            className="p-1.5 rounded-lg text-gray-455 hover:text-red-605 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
                             title="Move corrupted video to Trash"
                           >
                             <Trash2 size={16} />
@@ -304,7 +305,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-white/20 bg-transparent/30 text-xs text-gray-400 flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-white/20 bg-transparent text-xs text-gray-400 flex items-center justify-between">
         <span>
           Showing {filteredResults.length} of {results.length} files
         </span>

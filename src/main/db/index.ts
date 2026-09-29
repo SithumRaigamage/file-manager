@@ -171,6 +171,14 @@ try {
   }
 }
 
+try {
+  sqlite.exec(`ALTER TABLE app_settings ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';`);
+} catch (error: any) {
+  if (!error.message.includes('duplicate column name')) {
+    console.warn('Failed to migrate app_settings:', error.message);
+  }
+}
+
 // Settings are read/updated by id 'default'; without this row every update matched
 // zero rows and was silently dropped. All columns have defaults.
 sqlite.exec(`INSERT OR IGNORE INTO app_settings (id) VALUES ('default');`);

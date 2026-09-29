@@ -3,6 +3,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { Settings, ShieldCheck, Zap, HardDrive, RefreshCw } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Switch } from '../ui/Switch';
+import type { AppSettings } from '../../store/useSettingsStore';
 import { Button } from '../ui/Button';
 
 export function SettingsPage() {
@@ -76,11 +77,29 @@ export function SettingsPage() {
             
             <div className="p-5 flex items-center justify-between">
               <div>
+                <h3 className="font-semibold text-slate-800" id="theme-label">Theme</h3>
+                <p className="text-sm text-slate-500">Light, dark, or follow your system setting.</p>
+              </div>
+              <select
+                aria-labelledby="theme-label"
+                value={settings.theme}
+                onChange={(e) => updateSetting('theme', e.target.value as AppSettings['theme'])}
+                className="px-3 py-2 bg-white/80 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-slate-700"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+
+            <div className="p-5 flex items-center justify-between">
+              <div>
                 <h3 className="font-semibold text-slate-800">Reduced Motion</h3>
                 <p className="text-sm text-slate-500">Disable non-essential animations across the app.</p>
               </div>
               <Switch 
                 checked={settings.reducedMotion} 
+                label="Reduced motion"
                 onChange={(c) => updateSetting('reducedMotion', c)} 
               />
             </div>
@@ -148,6 +167,7 @@ export function SettingsPage() {
               </div>
               <Switch 
                 checked={settings.crashReportingOptIn} 
+                label="Crash reporting"
                 onChange={(c) => updateSetting('crashReportingOptIn', c)} 
               />
             </div>
@@ -159,6 +179,7 @@ export function SettingsPage() {
               </div>
               <Switch 
                 checked={settings.telemetryOptIn} 
+                label="Usage telemetry"
                 onChange={(c) => updateSetting('telemetryOptIn', c)} 
               />
             </div>
