@@ -59,12 +59,12 @@ test.describe('data safety', () => {
   })
 
   test.describe('revertMoves', () => {
-    test('reverts moves and keeps occupied or missing items as failures', () => {
+    test('reverts moves and keeps occupied or missing items as failures', async () => {
       const movedOk = file('out/ok.txt')
       const movedBlocked = file('out/blocked.txt', 'moved copy')
       const occupant = file('in/blocked.txt', 'newer file')
 
-      const outcome = revertMoves([
+      const outcome = await revertMoves([
         { before: path.join(dir, 'in/ok.txt'), after: movedOk, status: 'success' },
         { before: occupant, after: movedBlocked, status: 'success' },
         {

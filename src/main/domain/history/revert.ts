@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { movePath } from '../shared/move-path'
+import { movePathAsync } from '../shared/move-path'
 
 export interface BatchItem {
   before: string
@@ -28,7 +28,7 @@ export interface RevertOutcome {
  * - one failure never aborts the rest; every failure is returned so the caller
  *   can keep those items undoable.
  */
-export function revertMoves(items: BatchItem[]): RevertOutcome {
+export async function revertMoves(items: BatchItem[]): Promise<RevertOutcome> {
   const outcome: RevertOutcome = { reverted: [], failed: [] }
 
   for (let i = items.length - 1; i >= 0; i--) {
@@ -48,8 +48,8 @@ export function revertMoves(items: BatchItem[]): RevertOutcome {
     }
 
     try {
-      fs.mkdirSync(path.dirname(item.before), { recursive: true })
-      movePath(item.after, item.before)
+      await fs.promises.mkdir(path.dirname(item.before), { recursive: true })
+      await movePathAsync(item.after, item.before)
       outcome.reverted.push(item)
     } catch (err) {
       outcome.failed.push({ item, reason: (err as Error).message })

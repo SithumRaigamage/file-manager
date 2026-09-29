@@ -5,7 +5,7 @@ import { Worker } from 'worker_threads'
 import { db } from '../../db'
 import { duplicateGroups } from '../../db/schema'
 import { eq } from 'drizzle-orm'
-import { walkDirectory } from '../../domain/shared/directory-walker'
+import { walkDirectoryAsync } from '../../domain/shared/directory-walker'
 import crypto from 'crypto'
 
 export interface DuplicateScanProgress {
@@ -49,9 +49,10 @@ export class DuplicateScanner {
 
     let scannedCount = 0
 
-    walkDirectory(dirPath, {
+    // Async walk: a whole-drive scan must not block the main process (P1)
+    await walkDirectoryAsync(dirPath, {
       shouldContinue: () => !this.killed,
-      onEntry: (fullPath, item) => {
+      onEntry: async (fullPath, item) => {
         if (!item.isFile()) return
 
         scannedCount++
@@ -60,20 +61,14 @@ export class DuplicateScanner {
         }
 
         try {
-          const stat = fs.statSync(fullPath)
-          if (stat.size > 0) {
-            // Ignore empty files
-            if (!this.sizeMap.has(stat.size)) {
-              this.sizeMap.set(stat.size, [])
-            }
-            this.sizeMap.get(stat.size)!.push({
-              path: fullPath,
-              lastModified: stat.mtimeMs,
-              size: stat.size
-            })
-          }
+          const stat = await fs.promises.stat(fullPath)
+          if (stat.size === 0) return // empty files are never duplicates worth removing
+          const bucket = this.sizeMap.get(stat.size)
+          const file = { path: fullPath, lastModified: stat.mtimeMs, size: stat.size }
+          if (bucket) bucket.push(file)
+          else this.sizeMap.set(stat.size, [file])
         } catch {
-          // Ignore stat errors
+          // Unreadable or vanished mid-scan
         }
       }
     })

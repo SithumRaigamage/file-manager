@@ -42,3 +42,45 @@ export function walkDirectory(rootPath: string, options: WalkOptions): void {
 
   walk(rootPath)
 }
+
+export interface AsyncWalkOptions {
+  /** Called for every entry; may be async (e.g. to stat the entry). */
+  onEntry: (fullPath: string, entry: fs.Dirent, currentPath: string) => void | Promise<void>
+  shouldSkipDir?: (entry: fs.Dirent, fullPath: string) => boolean
+  /** Return false to abort early (cancellation). */
+  shouldContinue?: () => boolean
+}
+
+/**
+ * Non-blocking equivalent of `walkDirectory` for large trees (whole drives).
+ * Directory reads run on libuv's thread pool and the event loop is released
+ * between directories, so the main process stays responsive while walking.
+ */
+export async function walkDirectoryAsync(
+  rootPath: string,
+  options: AsyncWalkOptions
+): Promise<void> {
+  const { onEntry, shouldSkipDir, shouldContinue } = options
+  const pending: string[] = [rootPath]
+
+  while (pending.length > 0) {
+    if (shouldContinue && !shouldContinue()) return
+    const currentPath = pending.pop()!
+
+    let entries: fs.Dirent[]
+    try {
+      entries = await fs.promises.readdir(currentPath, { withFileTypes: true })
+    } catch {
+      continue // unreadable (permissions, vanished) — skip, like walkDirectory
+    }
+
+    for (const entry of entries) {
+      if (shouldContinue && !shouldContinue()) return
+      const fullPath = path.join(currentPath, entry.name)
+      await onEntry(fullPath, entry, currentPath)
+      if (entry.isDirectory() && !(shouldSkipDir && shouldSkipDir(entry, fullPath))) {
+        pending.push(fullPath)
+      }
+    }
+  }
+}

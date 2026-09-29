@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import { walkDirectory } from '../domain/shared/directory-walker'
+import { walkDirectoryAsync } from '../domain/shared/directory-walker'
+import { createThrottle } from '../domain/shared/throttle'
 import { resolveUniquePath } from '../domain/shared/unique-path'
-import { movePath, isSameOrInside } from '../domain/shared/move-path'
+import { movePathAsync, isSameOrInside } from '../domain/shared/move-path'
 import { planKeywordCollection } from '../domain/searcher/collect-plan'
 import { HistoryService, BatchItem } from '../domain/history/history-service'
 
@@ -48,6 +49,9 @@ export interface CollectResult {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Max progress message rate during drive scans (P4). */
+const PROGRESS_INTERVAL_MS = 100
 
 function getAvailableDrives(): Drive[] {
   const drives: Drive[] = []
@@ -132,35 +136,33 @@ function matchesVariants(entry: fs.Dirent, variants: string[]): boolean {
   return isExtensionMatch || isFilenameMatch
 }
 
-function toSearchResult(
+async function toSearchResult(
   fullPath: string,
   entry: fs.Dirent,
-  currentPath: string,
   rootPath: string
-): SearchResult | null {
+): Promise<SearchResult | null> {
   try {
-    const stats = fs.statSync(fullPath)
-    const item: SearchResult = {
+    const stats = await fs.promises.stat(fullPath)
+    const isFolder = entry.isDirectory()
+    let childCount = 0
+    if (isFolder) {
+      try {
+        childCount = (await fs.promises.readdir(fullPath)).length
+      } catch {
+        childCount = 0
+      }
+    }
+    return {
       name: entry.name,
       fullPath,
-      type: entry.isDirectory() ? 'folder' : 'file',
+      type: isFolder ? 'folder' : 'file',
       size: stats.size,
       extension: path.extname(entry.name),
       modifiedAt: stats.mtimeMs,
       depth: fullPath.split(path.sep).length - rootPath.split(path.sep).length,
-      parentPath: currentPath,
-      childCount: 0
+      parentPath: path.dirname(fullPath),
+      childCount
     }
-
-    if (entry.isDirectory()) {
-      try {
-        item.childCount = fs.readdirSync(fullPath).length
-      } catch {
-        item.childCount = 0
-      }
-    }
-
-    return item
   } catch {
     // Skip entries we can no longer stat (e.g. removed mid-scan)
     return null
@@ -201,19 +203,23 @@ export function registerSearcherHandlers(): void {
       const results: SearchResult[] = []
       const state = { scanned: 0 }
 
-      walkDirectory(drivePath, {
+      const shouldReport = createThrottle(PROGRESS_INTERVAL_MS)
+
+      await walkDirectoryAsync(drivePath, {
         shouldSkipDir: shouldSkipSearchDir,
-        onEntry: (fullPath, entry, currentPath) => {
+        onEntry: async (fullPath, entry) => {
           state.scanned++
           if (!matchesVariants(entry, variants)) return
 
-          const item = toSearchResult(fullPath, entry, currentPath, drivePath)
+          const item = await toSearchResult(fullPath, entry, drivePath)
           if (item) {
             results.push(item)
-            event.sender.send('searcher:progress', {
-              scanned: state.scanned,
-              found: results.length
-            })
+            if (shouldReport()) {
+              event.sender.send('searcher:progress', {
+                scanned: state.scanned,
+                found: results.length
+              })
+            }
           }
         }
       })
@@ -265,7 +271,7 @@ export function registerSearcherHandlers(): void {
         const destPath = resolveUniquePath(path.join(newFolderPath, item.name))
 
         try {
-          movePath(item.fullPath, destPath)
+          await movePathAsync(item.fullPath, destPath)
           moved++
           historyItems.push({ before: item.fullPath, after: destPath, status: 'success' })
           event.sender.send('searcher:collect-progress', { moved, total: results.length })
@@ -328,26 +334,21 @@ export function registerSearcherHandlers(): void {
 
       const state = { scanned: 0 }
 
-      walkDirectory(drivePath, {
+      const shouldReport = createThrottle(PROGRESS_INTERVAL_MS)
+
+      await walkDirectoryAsync(drivePath, {
         shouldSkipDir: shouldSkipSearchDir,
-        onEntry: (fullPath, entry, currentPath) => {
+        onEntry: async (fullPath, entry) => {
           state.scanned++
-          let matchedAny = false
+          const matching = queries.filter((q) => matchesVariants(entry, keywordMap[q].variants))
+          if (matching.length === 0) return
 
-          for (const query of queries) {
-            const { variants, results } = keywordMap[query]
-            if (!matchesVariants(entry, variants)) continue
+          // Stat once per entry, however many keywords it matches
+          const item = await toSearchResult(fullPath, entry, drivePath)
+          if (!item) return
+          for (const q of matching) keywordMap[q].results.push(item)
 
-            const item = toSearchResult(fullPath, entry, currentPath, drivePath)
-            if (item) {
-              results.push(item)
-              matchedAny = true
-              // Note: we don't stop here because a file might match multiple keywords,
-              // but for 'move' automation, we'll handle the first match later.
-            }
-          }
-
-          if (matchedAny) {
+          if (shouldReport()) {
             event.sender.send('searcher:progress', { scanned: state.scanned, found: 0 })
           }
         }

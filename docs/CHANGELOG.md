@@ -139,3 +139,13 @@ B1, B6 and B9 were already resolved in Phase 2.
 - **B12**: Ollama generation requests time out after 60 s.
 - Found, not fixed (outside the audit): the Settings page's FFmpeg path is stored but `features/converter/ffmpeg-locator.ts` never reads it, so the setting currently has no effect.
 - Tests: `tests/unit/bug-fixes.spec.ts`.
+
+## 2026-09-29 — Audit Phase 4: performance (P1–P5)
+
+- **P1**: Searcher search / batch search and the duplicate scanner walk the tree with the new non-blocking `walkDirectoryAsync` and async `stat`, so a drive-wide scan no longer freezes every window and IPC call. Searcher collect and undo use `movePathAsync` (a cross-drive folder copy no longer blocks the main process). A batch-search entry matching several keywords is now stat-ed once.
+- **P2** — **decision**: search results render progressively (first 200, more on scroll via `IntersectionObserver`) rather than being virtualized per layout; see SYSTEM-ARCHITECTURE.md.
+- **P3**: every page except the Dashboard is lazy-loaded. Startup renderer JS went from 2.92 MB to 1.06 MB (−64%); the MP4 analyzer (recharts, jspdf) loads on first visit.
+- **P4**: search progress IPC throttled to ≤ 10 messages/s.
+- **P5**: Inter is bundled via `@fontsource/inter`; Google Fonts links and CSP allowances removed — the app now works fully offline.
+- **Found — needs a product decision**: `components/pages/SearcherPage.tsx` is not imported or routed anywhere (the sidebar's "Advanced Search" opens `AdvancedSearchPage`). Its main-process handlers remain reachable over IPC and are covered by the Phase 1/4 fixes; the page itself is currently dead UI.
+- Tests: `tests/unit/performance.spec.ts`.

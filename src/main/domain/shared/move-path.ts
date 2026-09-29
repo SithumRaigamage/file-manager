@@ -36,3 +36,34 @@ export function movePath(source: string, dest: string): void {
     fs.rmSync(source, { recursive: true })
   }
 }
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await fs.promises.lstat(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Non-blocking `movePath` with the same guarantees (never overwrites, never into
+ * itself, copy+delete only on EXDEV). Use for user-sized batches in the main
+ * process, where a cross-drive copy can take minutes.
+ */
+export async function movePathAsync(source: string, dest: string): Promise<void> {
+  if (await exists(dest)) {
+    throw new Error(`Destination already exists: ${dest}`)
+  }
+  if (isSameOrInside(source, dest)) {
+    throw new Error(`Cannot move "${source}" into itself`)
+  }
+
+  try {
+    await fs.promises.rename(source, dest)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err
+    await fs.promises.cp(source, dest, { recursive: true, errorOnExist: true, force: false })
+    await fs.promises.rm(source, { recursive: true })
+  }
+}

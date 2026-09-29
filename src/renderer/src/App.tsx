@@ -1,22 +1,47 @@
-import React from 'react'
+import React, { lazy } from 'react'
 import { HashRouter } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
-import { OrganizerPage } from './components/pages/OrganizerPage'
-import { RenamerPage } from './components/pages/RenamerPage'
-import { ConverterPage } from './components/pages/ConverterPage'
-import { Mp4AnalyzerPage } from './components/pages/Mp4AnalyzerPage'
-import { HistoryPage } from './components/pages/HistoryPage'
 import { DashboardPage } from './components/pages/DashboardPage'
-import { DuplicatesPage } from './components/pages/DuplicatesPage'
-import { AdvancedSearchPage } from './components/pages/AdvancedSearchPage'
-import { LargeFileAnalyzerPage } from './components/pages/LargeFileAnalyzerPage'
-import { AutomationPage } from './components/pages/AutomationPage'
-import { ToolkitsPage } from './components/pages/ToolkitsPage'
-import { ImageToolkitPage } from './components/pages/ImageToolkitPage'
-import { SettingsPage } from './components/pages/SettingsPage'
 import { CommandPalette } from './components/layout/CommandPalette'
 import { KeepAliveRoutes, KeepAliveRoute } from './components/layout/KeepAliveRoutes'
 import './assets/main.css'
+
+/**
+ * Code-splits a page (P3): its bundle — and heavy deps like recharts or jspdf —
+ * loads on first visit instead of at startup. The Dashboard stays eager because
+ * it is the landing page.
+ */
+function lazyPage<K extends string>(
+  load: () => Promise<Record<K, React.ComponentType>>,
+  name: K
+): React.LazyExoticComponent<React.ComponentType> {
+  return lazy(() => load().then((module) => ({ default: module[name] })))
+}
+
+const OrganizerPage = lazyPage(() => import('./components/pages/OrganizerPage'), 'OrganizerPage')
+const RenamerPage = lazyPage(() => import('./components/pages/RenamerPage'), 'RenamerPage')
+const ConverterPage = lazyPage(() => import('./components/pages/ConverterPage'), 'ConverterPage')
+const Mp4AnalyzerPage = lazyPage(
+  () => import('./components/pages/Mp4AnalyzerPage'),
+  'Mp4AnalyzerPage'
+)
+const HistoryPage = lazyPage(() => import('./components/pages/HistoryPage'), 'HistoryPage')
+const DuplicatesPage = lazyPage(() => import('./components/pages/DuplicatesPage'), 'DuplicatesPage')
+const AdvancedSearchPage = lazyPage(
+  () => import('./components/pages/AdvancedSearchPage'),
+  'AdvancedSearchPage'
+)
+const LargeFileAnalyzerPage = lazyPage(
+  () => import('./components/pages/LargeFileAnalyzerPage'),
+  'LargeFileAnalyzerPage'
+)
+const AutomationPage = lazyPage(() => import('./components/pages/AutomationPage'), 'AutomationPage')
+const ToolkitsPage = lazyPage(() => import('./components/pages/ToolkitsPage'), 'ToolkitsPage')
+const ImageToolkitPage = lazyPage(
+  () => import('./components/pages/ImageToolkitPage'),
+  'ImageToolkitPage'
+)
+const SettingsPage = lazyPage(() => import('./components/pages/SettingsPage'), 'SettingsPage')
 
 // Pages stay mounted after first visit (see KeepAliveRoutes) so switching tabs
 // never discards in-progress work.
@@ -46,7 +71,7 @@ export default function App(): React.JSX.Element {
           <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-violet-300/30 blur-[100px]" />
           <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] rounded-full bg-blue-300/20 blur-[80px]" />
         </div>
-        
+
         <Sidebar />
         <main className="flex-1 overflow-hidden flex flex-col z-0">
           <KeepAliveRoutes routes={routes} />

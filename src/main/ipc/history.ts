@@ -17,7 +17,7 @@ export function registerHistoryHandlers(): void {
   ipcMain.handle('history:revertBatch', async (_, batchId: string) => {
     try {
       const { HistoryService } = await import('../domain/history/history-service')
-      const summary = HistoryService.revertBatch(batchId)
+      const summary = await HistoryService.revertBatch(batchId)
       return { ok: true, data: summary }
     } catch (err) {
       return { ok: false, error: { code: 'REVERT_ERROR', message: (err as Error).message } }

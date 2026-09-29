@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { TabActiveContext } from '../../lib/tab-activity'
 
@@ -13,6 +13,14 @@ export interface KeepAliveRoute {
  * never discards in-progress work: component state, running scans and their
  * progress subscriptions all survive navigation.
  */
+function PageLoading(): React.JSX.Element {
+  return (
+    <div className="flex-1 flex items-center justify-center text-sm text-gray-500" role="status">
+      Loading…
+    </div>
+  )
+}
+
 export function KeepAliveRoutes({ routes }: { routes: KeepAliveRoute[] }): React.JSX.Element {
   const { pathname } = useLocation()
   const [visited, setVisited] = useState<string[]>([pathname])
@@ -35,7 +43,9 @@ export function KeepAliveRoutes({ routes }: { routes: KeepAliveRoute[] }): React
               className={isActive ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}
               aria-hidden={!isActive}
             >
-              <TabActiveContext.Provider value={isActive}>{r.element}</TabActiveContext.Provider>
+              <TabActiveContext.Provider value={isActive}>
+                <Suspense fallback={<PageLoading />}>{r.element}</Suspense>
+              </TabActiveContext.Provider>
             </div>
           )
         })}

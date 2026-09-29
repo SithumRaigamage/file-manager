@@ -91,6 +91,13 @@ Desktop crash reporting (e.g., Electron's built-in crashReporter) — opt-in, su
 
 "Scalability" here means: handling large local batches (10,000+ files) without UI freeze or excessive memory use — achieved via streaming IPC updates, chunked file-list rendering (virtualized lists), and worker-limited FFmpeg concurrency rather than horizontal server scaling.
 
+Implementation notes (2026-09-29):
+- Whole-tree walks in the main process use `walkDirectoryAsync` (`domain/shared/directory-walker.ts`); the synchronous `walkDirectory` is only for bounded trees or worker threads. Large moves use `movePathAsync`.
+- High-frequency progress events are throttled to ≤ 10/s (`domain/shared/throttle.ts`).
+- Long result lists render progressively (`renderer/src/lib/use-progressive-list.ts`: 200 rows, more as the user scrolls) — chosen over per-layout virtualization because the Searcher has five different layouts (grids, list, table, tree).
+- Pages other than the Dashboard are code-split with `React.lazy` and load on first visit.
+- Fonts are bundled (`@fontsource/inter`); the renderer makes no network requests.
+
 ## Deployment
 
 Electron Builder packages produce signed installers/binaries for macOS (.dmg) and Windows (.exe/.msi). See INFRASTRUCTURE.md for CI/CD pipeline detail.

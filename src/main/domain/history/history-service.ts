@@ -41,7 +41,7 @@ export class HistoryService {
    * occupied) are kept in the batch so the user can resolve them and retry;
    * the batch is removed only once everything has been reverted.
    */
-  static revertBatch(batchId: string): RevertSummary {
+  static async revertBatch(batchId: string): Promise<RevertSummary> {
     const batch = db.select().from(batchRecords).where(eq(batchRecords.id, batchId)).get()
     if (!batch) {
       throw new Error(`Batch record ${batchId} not found`)
@@ -52,7 +52,7 @@ export class HistoryService {
 
     const items: BatchItem[] =
       typeof batch.items === 'string' ? JSON.parse(batch.items) : (batch.items as BatchItem[])
-    const outcome = revertMoves(items)
+    const outcome = await revertMoves(items)
 
     if (outcome.failed.length === 0) {
       db.delete(batchRecords).where(eq(batchRecords.id, batchId)).run()

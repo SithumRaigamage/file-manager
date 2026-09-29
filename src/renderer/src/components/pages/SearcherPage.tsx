@@ -40,6 +40,7 @@ import {
 import { useSearcherStore, ViewMode, SearchResult, Drive } from '../../store/searcherStore'
 import { AutomationPreview } from '../searcher/AutomationPreview'
 import { toMediaUrl } from '../../lib/media-url'
+import { useProgressiveList } from '../../lib/use-progressive-list'
 import { basename, dirname, pathDepth } from '../../lib/paths'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -614,6 +615,12 @@ export function SearcherPage(): React.ReactElement {
   } = useSearcherStore()
 
   const inputRef = useRef<HTMLInputElement>(null)
+  // Drive searches can return tens of thousands of rows; render them in pages (P2)
+  const {
+    visible: visibleResults,
+    hasMore: hasMoreResults,
+    sentinelRef: resultsSentinelRef
+  } = useProgressiveList(results)
   const showCollectModal = isCollecting || collectResult !== null
 
   const [activeTab, setActiveTab] = useState('search')
@@ -1297,7 +1304,7 @@ export function SearcherPage(): React.ReactElement {
                 >
                   {viewMode === 'large-icons' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3 content-start">
-                      {results.map((item) => (
+                      {visibleResults.map((item) => (
                         <LargeIconCard
                           key={item.fullPath}
                           item={item}
@@ -1310,7 +1317,7 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'tiles' && (
                     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 content-start">
-                      {results.map((item) => (
+                      {visibleResults.map((item) => (
                         <TileCard
                           key={item.fullPath}
                           item={item}
@@ -1324,7 +1331,7 @@ export function SearcherPage(): React.ReactElement {
                   {viewMode === 'list' && (
                     <div className="p-4">
                       <div className="bg-white/40 rounded-2xl border border-white/20 overflow-hidden">
-                        {results.map((item) => (
+                        {visibleResults.map((item) => (
                           <ListRow
                             key={item.fullPath}
                             item={item}
@@ -1338,7 +1345,7 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'details' && (
                     <DetailsTable
-                      results={results}
+                      results={visibleResults}
                       onRemove={removeResult}
                       onSelect={handleItemSelect}
                     />
@@ -1346,10 +1353,19 @@ export function SearcherPage(): React.ReactElement {
 
                   {viewMode === 'tree' && (
                     <TreeView
-                      results={results}
+                      results={visibleResults}
                       onRemove={removeResult}
                       onSelect={handleItemSelect}
                     />
+                  )}
+                  {hasMoreResults && (
+                    <div
+                      ref={resultsSentinelRef}
+                      className="py-4 text-center text-xs text-gray-400"
+                      aria-live="polite"
+                    >
+                      Showing {visibleResults.length} of {results.length}…
+                    </div>
                   )}
                 </motion.div>
               )}
