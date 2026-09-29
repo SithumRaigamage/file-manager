@@ -6,12 +6,16 @@ import os from 'os';
 test.describe('FileFlow E2E Smoke Tests', () => {
   let electronApp: any;
   let window: any;
+  let userDataDir: string;
 
   test.beforeAll(async () => {
     // Launch Electron app.
     // The main entry point is out/main/index.js
+    // Isolated profile so tests never touch the real app database (MP4 scan
+    // history pruning, duplicates, settings, ...).
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileflow-e2e-userdata-'));
     electronApp = await electron.launch({
-      args: [path.join(__dirname, '../../out/main/index.js')],
+      args: [path.join(__dirname, '../../out/main/index.js'), `--user-data-dir=${userDataDir}`],
       env: {
         ...process.env,
         NODE_ENV: 'development',
@@ -36,6 +40,7 @@ test.describe('FileFlow E2E Smoke Tests', () => {
     if (electronApp) {
       await electronApp.close();
     }
+    if (userDataDir) fs.rmSync(userDataDir, { recursive: true, force: true });
   });
 
   test('App should launch and display the sidebar', async () => {
@@ -168,5 +173,70 @@ test.describe('FileFlow E2E Smoke Tests', () => {
     await window.click('text=Advanced Search');
     await expect(searchInput).toBeVisible();
     await expect(searchInput).toHaveValue('quarterly report');
+  });
+
+  test('MP4 Analyzer should keep scan history with diffs, missing-file flags and a size limit', async () => {
+    // Garbage bytes pass the basic check but fail the container check, so each
+    // file resolves instantly as unrecoverable without needing ffmpeg.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fileflow-mp4-history-'));
+    fs.writeFileSync(path.join(dir, 'keep.mp4'), 'not really a video');
+    fs.writeFileSync(path.join(dir, 'gone.mp4'), 'not really a video');
+
+    const scanAndList = (targetDir: string) =>
+      window.evaluate(async (d: string) => {
+        const api = (window as any).api.mp4analyzer;
+        await api.analyzeFolder(d);
+        return api.listScans();
+      }, targetDir);
+
+    // First scan: no previous scan to compare with
+    let list = await scanAndList(dir);
+    expect(list.ok).toBe(true);
+    expect(list.data).toHaveLength(1);
+    expect(list.data[0]).toMatchObject({
+      targetPath: dir,
+      targetType: 'folder',
+      status: 'completed',
+      filesFound: 2,
+      filesScanned: 2,
+      unrecoverable: 2,
+      diff: null
+    });
+    const firstScanId = list.data[0].id;
+
+    // Second scan: one file removed, one added
+    fs.rmSync(path.join(dir, 'gone.mp4'));
+    fs.writeFileSync(path.join(dir, 'new.mp4'), 'not really a video');
+    list = await scanAndList(dir);
+    expect(list.data).toHaveLength(2);
+    expect(list.data[0].diff).toEqual({ newlyCorrupted: 0, fixed: 0, newFiles: 1, removedFiles: 1 });
+
+    // Reopening the first scan flags the deleted file as missing
+    const first = await window.evaluate(
+      (id: string) => (window as any).api.mp4analyzer.getScan(id),
+      firstScanId
+    );
+    expect(first.ok).toBe(true);
+    const missing = Object.fromEntries(
+      first.data.results.map((r: any) => [path.basename(r.filePath), r.missingOnDisk])
+    );
+    expect(missing).toEqual({ 'keep.mp4': false, 'gone.mp4': true });
+
+    // UI: history tab lists both scans; opening the old one shows the Missing badge
+    await window.click('text=MP4 Analyzer');
+    await window.click('text=/Scan History \\(2\\)/');
+    await expect(window.locator('[data-testid="mp4-history-row"]')).toHaveCount(2);
+    await window.locator('[data-testid="mp4-history-row"]').nth(1).click();
+    await expect(window.locator('text=Viewing saved scan from')).toBeVisible();
+    await expect(window.locator('tr', { hasText: 'gone.mp4' }).locator('text="Missing"')).toBeVisible();
+    await expect(window.locator('tr', { hasText: 'keep.mp4' }).locator('text="Missing"')).toHaveCount(0);
+
+    // Auto-keep last N: with a limit of 1 only the newest scan survives
+    await window.evaluate(() => (window as any).fileflow.settings.update({ mp4HistoryLimit: 1 }));
+    list = await scanAndList(dir);
+    expect(list.data).toHaveLength(1);
+    expect(list.data[0].id).not.toBe(firstScanId);
+
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

@@ -47,6 +47,8 @@ const legacyApi = {
     runRepair: (filePath: string, command: string) => ipcRenderer.invoke('mp4analyzer:runRepair', filePath, command),
     deleteFile: (filePath: string) => ipcRenderer.invoke('mp4analyzer:deleteFile', filePath),
     deleteMultipleFiles: (filePaths: string[], scannedFolder: string | null) => ipcRenderer.invoke('mp4analyzer:deleteMultipleFiles', filePaths, scannedFolder),
+    listScans: () => ipcRenderer.invoke('mp4analyzer:listScans'),
+    getScan: (id: string) => ipcRenderer.invoke('mp4analyzer:getScan', id),
     onProgress: (cb: (data: unknown) => void) => {
       ipcRenderer.on('mp4analyzer:progress', (_, data) => cb(data))
       return () => ipcRenderer.removeAllListeners('mp4analyzer:progress')

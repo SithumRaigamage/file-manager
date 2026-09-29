@@ -5,13 +5,7 @@ import * as path from 'path'
 import * as os from 'os'
 import { spawn, execFile, ChildProcess } from 'child_process'
 import { promisify } from 'util'
-import {
-  Mp4FileResult,
-  Mp4Metadata,
-  Mp4PlaybackVerification,
-  Mp4Recommendation,
-  CorruptionLevel
-} from '../../renderer/src/types/mp4analyzer'
+import { Mp4FileResult, Mp4Metadata } from '../../renderer/src/types/mp4analyzer'
 
 const execFileAsync = promisify(execFile)
 
@@ -34,6 +28,15 @@ function killActiveProcesses(): void {
   activeProcesses.clear()
 }
 
+// History is best-effort: a failed save must never fail the scan itself
+function recordScan(input: SaveMp4ScanInput): void {
+  try {
+    saveMp4Scan(input)
+  } catch (error) {
+    console.error('Failed to save MP4 scan history:', error)
+  }
+}
+
 function beginScan(): number {
   killActiveProcesses()
   cancelRequested = false
@@ -41,167 +44,9 @@ function beginScan(): number {
 }
 
 import { resolveFFmpegPath, resolveFFprobePath } from '../features/converter/ffmpeg-locator'
-
-interface Box {
-  type: string
-  size: number
-  offset: number
-  children?: Box[]
-}
-
-function parseSubBoxes(fd: number, startOffset: number, endOffset: number): Box[] {
-  const boxes: Box[] = []
-  let offset = startOffset
-  const buf = Buffer.alloc(8)
-
-  // Sub-box containers we care about parsing recursively
-  const containerTypes = ['moov', 'trak', 'mdia', 'minf', 'stbl']
-
-  while (offset < endOffset) {
-    if (endOffset - offset < 8) break
-    try {
-      fs.readSync(fd, buf, 0, 8, offset)
-      let size = buf.readUInt32BE(0)
-      const type = buf.toString('ascii', 4, 8)
-
-      let boxHeaderSize = 8
-      if (size === 1) {
-        if (endOffset - offset < 16) break
-        const sizeBuf = Buffer.alloc(8)
-        fs.readSync(fd, sizeBuf, 0, 8, offset + 8)
-        const hi = sizeBuf.readUInt32BE(0)
-        const lo = sizeBuf.readUInt32BE(4)
-        size = hi * 4294967296 + lo
-        boxHeaderSize = 16
-      } else if (size === 0) {
-        size = endOffset - offset
-      }
-
-      if (size <= 0 || offset + size > endOffset) {
-        break
-      }
-
-      // Check if type looks like standard ASCII alphanumeric
-      if (/^[a-zA-Z0-9 ]{4}$/.test(type)) {
-        const box: Box = { type, size, offset }
-        if (containerTypes.includes(type)) {
-          box.children = parseSubBoxes(fd, offset + boxHeaderSize, offset + size)
-        }
-        boxes.push(box)
-      } else {
-        break
-      }
-
-      offset += size
-    } catch {
-      break
-    }
-  }
-  return boxes
-}
-
-function parseRootBoxes(filePath: string): { boxes: Box[]; error?: string } {
-  const boxes: Box[] = []
-  let fd: number
-  try {
-    fd = fs.openSync(filePath, 'r')
-  } catch (err) {
-    return { boxes, error: (err as Error).message }
-  }
-
-  try {
-    const stats = fs.fstatSync(fd)
-    const fileSize = stats.size
-    let offset = 0
-    const buf = Buffer.alloc(8)
-
-    while (offset < fileSize) {
-      if (fileSize - offset < 8) break
-      fs.readSync(fd, buf, 0, 8, offset)
-      let size = buf.readUInt32BE(0)
-      const type = buf.toString('ascii', 4, 8)
-
-      let boxHeaderSize = 8
-      if (size === 1) {
-        if (fileSize - offset < 16) break
-        const sizeBuf = Buffer.alloc(8)
-        fs.readSync(fd, sizeBuf, 0, 8, offset + 8)
-        const hi = sizeBuf.readUInt32BE(0)
-        const lo = sizeBuf.readUInt32BE(4)
-        size = hi * 4294967296 + lo
-        boxHeaderSize = 16
-      } else if (size === 0) {
-        size = fileSize - offset
-      }
-
-      if (size <= 0 || offset + size > fileSize) {
-        break
-      }
-
-      if (/^[a-zA-Z0-9 ]{4}$/.test(type)) {
-        const box: Box = { type, size, offset }
-        if (['moov', 'trak'].includes(type)) {
-          box.children = parseSubBoxes(fd, offset + boxHeaderSize, offset + size)
-        }
-        boxes.push(box)
-      } else {
-        // Stop if we encounter non-standard box headers to prevent infinite parsing
-        break
-      }
-
-      offset += size
-    }
-    return { boxes }
-  } catch (err) {
-    return { boxes, error: (err as Error).message }
-  } finally {
-    try {
-      fs.closeSync(fd)
-    } catch {
-      // ignore
-    }
-  }
-}
-
-function flattenBoxes(boxes: Box[], prefix = ''): string[] {
-  const result: string[] = []
-  for (const box of boxes) {
-    const name = prefix ? `${prefix}/${box.type}` : box.type
-    result.push(name)
-    if (box.children) {
-      result.push(...flattenBoxes(box.children, name))
-    }
-  }
-  return result
-}
-
-function checkBasicFile(filePath: string): { valid: boolean; size: number; errorMsg?: string } {
-  try {
-    if (!fs.existsSync(filePath)) {
-      return { valid: false, size: 0, errorMsg: 'File does not exist' }
-    }
-    const stats = fs.statSync(filePath)
-    if (!stats.isFile()) {
-      return { valid: false, size: 0, errorMsg: 'Not a regular file' }
-    }
-    if (stats.size === 0) {
-      return { valid: false, size: 0, errorMsg: 'File size is 0 bytes' }
-    }
-    const ext = path.extname(filePath).toLowerCase()
-    if (ext !== '.mp4') {
-      return { valid: false, size: stats.size, errorMsg: 'File extension is not .mp4' }
-    }
-    // Check read permission
-    fs.accessSync(filePath, fs.constants.R_OK)
-    return { valid: true, size: stats.size }
-  } catch (err) {
-    return {
-      valid: false,
-      size: 0,
-      errorMsg: `Read permissions unavailable: ${(err as Error).message}`
-    }
-  }
-}
+import { saveMp4Scan, listMp4Scans, getMp4Scan, SaveMp4ScanInput } from '../db/mp4-scan-repo'
+import { analyzeMp4File, StreamAnalyzer } from '../domain/mp4analyzer/file-analyzer'
+import type { IntegrityCheckResult } from '../domain/mp4analyzer/diagnosis'
 
 async function runFFprobeAnalysis(
   filePath: string,
@@ -256,13 +101,7 @@ function runFFmpegIntegrityCheck(
   ffmpegPath: string,
   totalDuration: number,
   onProgress: (progress: number) => void
-): Promise<{
-  errorCount: number
-  warningCount: number
-  decodableFrames: number
-  totalFrames: number
-  errorLogs: string[]
-}> {
+): Promise<IntegrityCheckResult> {
   return new Promise((resolve) => {
     // Limit integrity check to the first 30 seconds of video to speed up scans by 10-100x.
     // Truncations and container defects are already caught by the binary atom box parser.
@@ -387,73 +226,18 @@ function runFFmpegIntegrityCheck(
   })
 }
 
-function determineCorruption(
-  basicVal: string,
-  containerVal: string,
-  _errorCount: number,
-  healthScore: number
-): CorruptionLevel {
-  if (basicVal === 'invalid' || containerVal === 'corrupted') {
-    return 'unrecoverable'
-  }
-  if (healthScore < 70) {
-    return 'severe'
-  }
-  if (healthScore >= 70 && healthScore < 90) {
-    return 'moderate'
-  }
-  if (healthScore >= 90 && healthScore < 98) {
-    return 'minor'
-  }
-  return 'healthy'
-}
-
-function getRecommendation(
-  corruptionLevel: CorruptionLevel,
-  containerVal: string,
-  filePath: string
-): Mp4Recommendation {
-  if (corruptionLevel === 'healthy') {
-    return { action: 'No repair needed. File is fully functional.', confidence: 'high' }
-  }
-
-  const baseName = path.basename(filePath, path.extname(filePath))
-  const dirName = path.dirname(filePath)
-  const repairedPath = path.join(dirName, `${baseName}_repaired.mp4`)
-
-  if (containerVal === 'corrupted') {
+/** Binds the FFprobe/FFmpeg runners to the resolved binaries; null if FFmpeg isn't installed. */
+async function createStreamAnalyzer(): Promise<StreamAnalyzer | null> {
+  try {
+    const ffprobePath = await resolveFFprobePath()
+    const ffmpegPath = await resolveFFmpegPath()
     return {
-      action:
-        'Rebuild MOOV atom. The container is missing metadata headers. Try using FFmpeg to copy streams, which sometimes re-generates the container headers.',
-      confidence: 'medium',
-      command: `ffmpeg -i "${filePath}" -c copy -map 0 "${repairedPath}"`
+      probe: (filePath) => runFFprobeAnalysis(filePath, ffprobePath),
+      checkIntegrity: (filePath, duration, onProgress) =>
+        runFFmpegIntegrityCheck(filePath, ffmpegPath, duration, onProgress)
     }
-  }
-
-  if (containerVal === 'warning') {
-    return {
-      action:
-        'Fast-start optimize. Move the MOOV atom to the beginning of the file for web optimization.',
-      confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c copy -movflags +faststart "${repairedPath}"`
-    }
-  }
-
-  if (corruptionLevel === 'minor' || corruptionLevel === 'moderate') {
-    return {
-      action:
-        'Re-encode video stream. Minor stream corruption detected. Re-encoding will clean up broken reference frames.',
-      confidence: 'high',
-      command: `ffmpeg -i "${filePath}" -c:v libx264 -crf 23 -preset medium -c:a aac "${repairedPath}"`
-    }
-  }
-
-  // Severe
-  return {
-    action:
-      'Full stream rebuild. Severe frame corruption detected. Try forcing keyframe recovery or re-encoding with stream copying.',
-    confidence: 'low',
-    command: `ffmpeg -err_detect ignore_err -i "${filePath}" -c:v libx264 -crf 28 -preset fast "${repairedPath}"`
+  } catch {
+    return null
   }
 }
 
@@ -620,169 +404,37 @@ export function registerMp4AnalyzerHandlers(): void {
   ipcMain.handle(
     'mp4analyzer:analyzeFile',
     async (event, filePath: string): Promise<Mp4FileResult> => {
+      const startedAt = new Date().toISOString()
       const generation = beginScan()
-      const basic = checkBasicFile(filePath)
-      const fileName = path.basename(filePath)
-
-      if (!basic.valid) {
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'invalid',
-          containerValidation: 'corrupted',
-          ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: 'unrecoverable',
-          recommendation: { action: basic.errorMsg || 'Basic check failed', confidence: 'low' },
-          errorMsg: basic.errorMsg
-        }
+      const streams = await createStreamAnalyzer()
+      const result = await analyzeMp4File(filePath, streams, (p) => {
+        // Stream single-file scanning progress
+        if (generation !== scanGeneration) return
+        event.sender.send('mp4analyzer:progress', {
+          scanned: p,
+          total: 100,
+          currentFile: path.basename(filePath)
+        })
+      })
+      // Superseded scans are not recorded in history
+      if (generation === scanGeneration) {
+        recordScan({
+          targetPath: filePath,
+          targetType: 'file',
+          startedAt,
+          status: cancelRequested ? 'cancelled' : 'completed',
+          filesFound: 1,
+          results: [result]
+        })
       }
-
-      // MP4 Container check
-      const containerCheck = parseRootBoxes(filePath)
-      const flattened = flattenBoxes(containerCheck.boxes)
-
-      let containerValidation: 'healthy' | 'warning' | 'corrupted' = 'healthy'
-      if (containerCheck.error || !flattened.includes('moov') || !flattened.includes('ftyp')) {
-        containerValidation = 'corrupted'
-      } else {
-        // Warning if moov atom appears after mdat (non-faststart)
-        const mdatIdx = flattened.findIndex((t) => t.endsWith('mdat'))
-        const moovIdx = flattened.findIndex((t) => t.endsWith('moov'))
-        if (moovIdx !== -1 && mdatIdx !== -1 && moovIdx > mdatIdx) {
-          containerValidation = 'warning'
-        }
-      }
-
-      if (containerValidation === 'corrupted') {
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation: 'corrupted',
-          ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: 'unrecoverable',
-          recommendation: getRecommendation('unrecoverable', 'corrupted', filePath),
-          errorMsg: 'Missing or corrupted essential atoms (moov / ftyp)',
-          atomStructure: flattened
-        }
-      }
-
-      // Check FFmpeg & FFprobe
-      let ffprobePath = ''
-      let ffmpegPath = ''
-      try {
-        ffprobePath = await resolveFFprobePath()
-        ffmpegPath = await resolveFFmpegPath()
-      } catch {
-        // Return partial checks if FFmpeg is not found
-        return {
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation,
-          ffmpegValidation: {
-            errorCount: 0,
-            warningCount: 0,
-            severity: containerValidation === 'warning' ? 'minor' : 'healthy'
-          },
-          metadata: null,
-          playbackVerification: null,
-          corruptionLevel: containerValidation === 'warning' ? 'minor' : 'healthy',
-          recommendation: {
-            action:
-              'FFmpeg/FFprobe not available on host. Stream scans skipped. ' +
-              (containerValidation === 'warning'
-                ? 'Container warning detected.'
-                : 'Container is structurally healthy.'),
-            confidence: 'medium'
-          },
-          errorMsg: 'FFmpeg/FFprobe missing. Comprehensive frame analysis skipped.',
-          atomStructure: flattened
-        }
-      }
-
-      // Metadata analysis
-      const metadata = await runFFprobeAnalysis(filePath, ffprobePath)
-      let playbackVerification: Mp4PlaybackVerification | null = null
-      let errorCount = 0
-      let warningCount = 0
-      let errorLogs: string[] = []
-
-      if (metadata && metadata.duration > 0) {
-        const integrity = await runFFmpegIntegrityCheck(
-          filePath,
-          ffmpegPath,
-          metadata.duration,
-          (p) => {
-            // Stream single-file scanning progress
-            if (generation !== scanGeneration) return
-            event.sender.send('mp4analyzer:progress', {
-              scanned: p,
-              total: 100,
-              currentFile: fileName
-            })
-          }
-        )
-
-        errorCount = integrity.errorCount
-        warningCount = integrity.warningCount
-        errorLogs = integrity.errorLogs
-
-        const score =
-          integrity.totalFrames > 0
-            ? Math.round((integrity.decodableFrames / integrity.totalFrames) * 1000) / 10
-            : 100
-
-        playbackVerification = {
-          totalFrames: integrity.totalFrames,
-          decodableFrames: integrity.decodableFrames,
-          corruptedFrames: integrity.totalFrames - integrity.decodableFrames,
-          healthScore: score
-        }
-      } else {
-        playbackVerification = {
-          totalFrames: 0,
-          decodableFrames: 0,
-          corruptedFrames: 0,
-          healthScore: 0
-        }
-      }
-
-      const health = playbackVerification ? playbackVerification.healthScore : 100
-      const corruptionLevel = determineCorruption('valid', containerValidation, errorCount, health)
-      const recommendation = getRecommendation(corruptionLevel, containerValidation, filePath)
-
-      return {
-        filePath,
-        fileName,
-        fileSize: basic.size,
-        basicValidation: 'valid',
-        containerValidation,
-        ffmpegValidation: {
-          errorCount,
-          warningCount,
-          severity: corruptionLevel
-        },
-        metadata,
-        playbackVerification,
-        corruptionLevel,
-        recommendation,
-        atomStructure: flattened,
-        errorLogs
-      }
+      return result
     }
   )
 
   ipcMain.handle(
     'mp4analyzer:analyzeFolder',
     async (event, folderPath: string): Promise<Mp4FileResult[]> => {
+      const startedAt = new Date().toISOString()
       const generation = beginScan()
       const isCurrent = (): boolean => generation === scanGeneration
       const results: Mp4FileResult[] = []
@@ -798,14 +450,7 @@ export function registerMp4AnalyzerHandlers(): void {
       const total = files.length
       if (total === 0) return []
 
-      let ffprobePath = ''
-      let ffmpegPath = ''
-      try {
-        ffprobePath = await resolveFFprobePath()
-        ffmpegPath = await resolveFFmpegPath()
-      } catch {
-        // Ignored, fallback handling matches analyzeFile
-      }
+      const streams = await createStreamAnalyzer()
 
       for (let i = 0; i < total; i++) {
         if (cancelRequested || !isCurrent()) {
@@ -822,150 +467,17 @@ export function registerMp4AnalyzerHandlers(): void {
           currentFile: fileName
         })
 
-        // Run check inside folder scanner
-        const basic = checkBasicFile(filePath)
-        if (!basic.valid) {
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'invalid',
-            containerValidation: 'corrupted',
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel: 'unrecoverable',
-            recommendation: { action: basic.errorMsg || 'Basic check failed', confidence: 'low' },
-            errorMsg: basic.errorMsg
+        results.push(
+          await analyzeMp4File(filePath, streams, (p) => {
+            // Send sub-progress for current file scan
+            if (!isCurrent()) return
+            event.sender.send('mp4analyzer:progress', {
+              scanned: i + p / 100,
+              total,
+              currentFile: fileName
+            })
           })
-          continue
-        }
-
-        const containerCheck = parseRootBoxes(filePath)
-        const flattened = flattenBoxes(containerCheck.boxes)
-
-        let containerValidation: 'healthy' | 'warning' | 'corrupted' = 'healthy'
-        if (containerCheck.error || !flattened.includes('moov') || !flattened.includes('ftyp')) {
-          containerValidation = 'corrupted'
-        } else {
-          const mdatIdx = flattened.findIndex((t) => t.endsWith('mdat'))
-          const moovIdx = flattened.findIndex((t) => t.endsWith('moov'))
-          if (moovIdx !== -1 && mdatIdx !== -1 && moovIdx > mdatIdx) {
-            containerValidation = 'warning'
-          }
-        }
-
-        if (containerValidation === 'corrupted') {
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'valid',
-            containerValidation: 'corrupted',
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: 'unrecoverable' },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel: 'unrecoverable',
-            recommendation: getRecommendation('unrecoverable', 'corrupted', filePath),
-            errorMsg: 'Missing essential MP4 atoms',
-            atomStructure: flattened
-          })
-          continue
-        }
-
-        if (!ffprobePath || !ffmpegPath) {
-          const corruptionLevel = containerValidation === 'warning' ? 'minor' : 'healthy'
-          results.push({
-            filePath,
-            fileName,
-            fileSize: basic.size,
-            basicValidation: 'valid',
-            containerValidation,
-            ffmpegValidation: { errorCount: 0, warningCount: 0, severity: corruptionLevel },
-            metadata: null,
-            playbackVerification: null,
-            corruptionLevel,
-            recommendation: {
-              action: 'FFmpeg/FFprobe missing. Comprehensive frame analysis skipped.',
-              confidence: 'medium'
-            },
-            atomStructure: flattened
-          })
-          continue
-        }
-
-        const metadata = await runFFprobeAnalysis(filePath, ffprobePath)
-        let playbackVerification: Mp4PlaybackVerification | null = null
-        let errorCount = 0
-        let warningCount = 0
-        let errorLogs: string[] = []
-
-        if (metadata && metadata.duration > 0) {
-          const integrity = await runFFmpegIntegrityCheck(
-            filePath,
-            ffmpegPath,
-            metadata.duration,
-            (p) => {
-              // Send sub-progress for current file scan
-              if (!isCurrent()) return
-              event.sender.send('mp4analyzer:progress', {
-                scanned: i + p / 100,
-                total,
-                currentFile: fileName
-              })
-            }
-          )
-          errorCount = integrity.errorCount
-          warningCount = integrity.warningCount
-          errorLogs = integrity.errorLogs
-
-          const score =
-            integrity.totalFrames > 0
-              ? Math.round((integrity.decodableFrames / integrity.totalFrames) * 1000) / 10
-              : 100
-
-          playbackVerification = {
-            totalFrames: integrity.totalFrames,
-            decodableFrames: integrity.decodableFrames,
-            corruptedFrames: integrity.totalFrames - integrity.decodableFrames,
-            healthScore: score
-          }
-        } else {
-          playbackVerification = {
-            totalFrames: 0,
-            decodableFrames: 0,
-            corruptedFrames: 0,
-            healthScore: 0
-          }
-        }
-
-        const health = playbackVerification ? playbackVerification.healthScore : 100
-        const corruptionLevel = determineCorruption(
-          'valid',
-          containerValidation,
-          errorCount,
-          health
         )
-        const recommendation = getRecommendation(corruptionLevel, containerValidation, filePath)
-
-        results.push({
-          filePath,
-          fileName,
-          fileSize: basic.size,
-          basicValidation: 'valid',
-          containerValidation,
-          ffmpegValidation: {
-            errorCount,
-            warningCount,
-            severity: corruptionLevel
-          },
-          metadata,
-          playbackVerification,
-          corruptionLevel,
-          recommendation,
-          atomStructure: flattened,
-          errorLogs
-        })
       }
 
       // A superseded scan must not overwrite the newer scan's progress
@@ -978,9 +490,46 @@ export function registerMp4AnalyzerHandlers(): void {
         currentFile: 'Scan complete'
       })
 
+      recordScan({
+        targetPath: folderPath,
+        targetType: 'folder',
+        startedAt,
+        status: cancelRequested ? 'cancelled' : 'completed',
+        filesFound: total,
+        results
+      })
+
       return results
     }
   )
+
+  ipcMain.handle('mp4analyzer:listScans', () => {
+    try {
+      return { ok: true, data: listMp4Scans() }
+    } catch (error) {
+      return {
+        ok: false,
+        error: { code: 'HISTORY_LIST_FAILED', message: (error as Error).message }
+      }
+    }
+  })
+
+  ipcMain.handle('mp4analyzer:getScan', (_event, id: string) => {
+    try {
+      const scan = getMp4Scan(id)
+      if (!scan) {
+        return {
+          ok: false,
+          error: { code: 'SCAN_NOT_FOUND', message: 'This scan is no longer in history' }
+        }
+      }
+      // Flag files moved or deleted since the scan; computed now, never stored
+      const results = scan.results.map((r) => ({ ...r, missingOnDisk: !fs.existsSync(r.filePath) }))
+      return { ok: true, data: { ...scan, results } }
+    } catch (error) {
+      return { ok: false, error: { code: 'HISTORY_GET_FAILED', message: (error as Error).message } }
+    }
+  })
 
   ipcMain.handle('mp4analyzer:cancel', () => {
     cancelRequested = true
@@ -1073,7 +622,8 @@ export function registerMp4AnalyzerHandlers(): void {
           const dur = r.metadata?.duration || 0
           const res = r.metadata?.resolution || 'N/A'
           const cod = r.metadata?.codec || 'N/A'
-          const health = r.playbackVerification?.healthScore || 100
+          const health =
+            r.corruptionLevel === 'unrecoverable' ? 0 : (r.playbackVerification?.healthScore ?? 100)
           const errs = r.ffmpegValidation.errorCount
           const rec = r.recommendation.action.replace(/"/g, '""')
           return `"${r.fileName}","${r.filePath}",${size},${dur},"${res}","${cod}","${r.corruptionLevel}",${health},${errs},"${rec}"`

@@ -3,6 +3,7 @@ import { FileText, Download, CheckCircle, AlertCircle, FileSpreadsheet, Braces }
 import { Mp4FileResult, Mp4AnalyzerSummary } from '../../types/mp4analyzer'
 import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
+import { getHealthScore } from '../../lib/mp4-health'
 
 interface ReportPanelProps {
   results: Mp4FileResult[]
@@ -108,7 +109,7 @@ export function ReportPanel({ results, summary }: ReportPanelProps): React.JSX.E
       const fileRows = results.map((r) => {
         const sizeMB = (r.fileSize / (1024 * 1024)).toFixed(2) + ' MB'
         const duration = r.metadata?.duration ? Math.round(r.metadata.duration) + 's' : 'N/A'
-        const health = (r.playbackVerification?.healthScore ?? 100) + '%'
+        const health = getHealthScore(r) + '%'
         const errors = r.ffmpegValidation.errorCount
         return [
           r.fileName,

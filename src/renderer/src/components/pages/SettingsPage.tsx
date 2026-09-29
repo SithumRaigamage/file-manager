@@ -55,6 +55,24 @@ export function SettingsPage() {
                 className="w-24 px-3 py-2 bg-white/40 border border-white/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               />
             </div>
+
+            <div className="p-5 flex items-center justify-between border-b border-white/20">
+              <div>
+                <h3 className="font-semibold text-slate-800">MP4 Scan History</h3>
+                <p className="text-sm text-slate-500">Number of recent MP4 Analyzer scans to keep. 0 keeps all.</p>
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={settings.mp4HistoryLimit}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  updateSetting('mp4HistoryLimit', Number.isNaN(value) ? 20 : Math.max(0, value));
+                }}
+                className="w-24 px-3 py-2 bg-white/40 border border-white/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              />
+            </div>
             
             <div className="p-5 flex items-center justify-between">
               <div>

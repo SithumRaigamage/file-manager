@@ -67,6 +67,18 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend: keep-alive routing, `useTabActivated`, scan-superseding rule), this file.
 - **No new open decisions raised.**
 
+## 2026-09-27 — MP4 Integrity Analyzer: Scan History
+
+- **Requested scope addition** (founder request; the MP4 Analyzer is post-MVP surface, so this is logged as explicit scope, not silent expansion). Contents were chosen item-by-item by the founder:
+  - **Approved**: per-scan row with date/time, target, duration; health counts + total size; status (completed / "Cancelled — X of Y files"); change since last scan of the same target; reopening a scan restores full results into Files Table / Visual Diagnostics / Export Reports including error logs and atom structure; auto-keep last N scans (Settings); "Missing" flag for files no longer on disk.
+  - **Rejected** (do not build without a new request): one-click re-scan, export from history, delete single scan, clear all, search/filter, repair tracking, per-file health timeline, labels/notes/pinning.
+- **Design**: new `mp4_scans` table (`docs/DATA-MODEL.md` → `Mp4Scan`); per-file results stored as a JSON column (same approach as `duplicate_groups.files`). Diff/summary logic is pure domain code in `src/main/domain/mp4analyzer/scan-diff.ts`; persistence in `src/main/db/mp4-scan-repo.ts`; the existing `analyzeFile`/`analyzeFolder` handlers record each scan (best-effort — a failed save never fails the scan). Superseded scans are not recorded. `missingOnDisk` is computed on reopen, never stored. History limit defaults to **20** (not higher) because storing logs + atoms makes large-folder scans several MB each.
+- **Pre-existing bug fixed along the way**: no `app_settings` row was ever created, so `settings:update` (which updates `WHERE id = 'default'`) silently changed nothing — no setting in the Settings page was actually persisting. The DB init now seeds the `'default'` row (`INSERT OR IGNORE`).
+- **Test isolation**: `tests/e2e/smoke.spec.ts` now launches Electron with a temporary `--user-data-dir`, so e2e runs no longer read or modify the real app database (previously they did — e.g. the duplicates test cleared real duplicate results, and the new history-pruning test would have deleted real scan history).
+- **Tests**: new e2e case covering save, diff (new/removed files), missing-file flag via IPC and UI, and pruning to N.
+- **Docs touched**: `docs/DATA-MODEL.md`, `docs/API-CONTRACT.md`, `tasks/03-MVP.md`, this file.
+- **No new open decisions raised.**
+
 ## Template for Future Entries
 
 ```
@@ -75,3 +87,13 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - Which docs/tasks files were touched.
 - Any new open decisions raised.
 ```
+
+## 2026-09-29 — MP4 Analyzer: incomplete-download detection & honest repair advice
+
+- **Root cause**: a fully sized but never-completed download (preallocated by a torrent client / segmented downloader, ~97% zero bytes) was reported as "Missing MOOV atom" with a medium-confidence FFmpeg `-c copy` repair and a 100% health score. That repair can never succeed — FFmpeg cannot demux an MP4 with no `moov` — and the 100% came from a `?? 100` fallback for files that never get a playback score.
+- Added `src/main/domain/mp4analyzer/zero-fill.ts`: samples 32 evenly spaced 64 KB blocks (incl. first/last); if ≥10% are all-zero the file is reported as an **incomplete download** (unrecoverable, no repair command). Encoded A/V essentially never contains a 64 KB zero run, so the threshold is conservative. Runs before the container parse in both analysis paths (`analyzeSingleFile` and the directory scan). Unit tests: `tests/unit/zero-fill.spec.ts` (Playwright runner, pure Node — no Electron).
+- `getRecommendation`: when `moov` is absent, no FFmpeg command is offered; guidance points to `untrunc` with a same-device reference file. Other container damage keeps the stream-copy attempt, downgraded to low confidence.
+- Health score for `unrecoverable` results is now 0% everywhere (table, drawer, charts, PDF report, CSV export) via `renderer/src/lib/mp4-health.ts`; the CSV export's `|| 100` (which also mapped a real 0 to 100) was fixed.
+- File detail drawer: portaled to `document.body` and made opaque — the 40%-opacity glass panel let page content bleed through, and a transformed ancestor clipped its fixed-position backdrop.
+- **Domain extraction (same day)**: the MP4 analysis pipeline moved out of `ipc/mp4analyzer.ts` into `src/main/domain/mp4analyzer/` — `atom-parser.ts` (box walker, `validateContainer`), `diagnosis.ts` (`checkBasicFile`, `buildPlaybackVerification`, `determineCorruption`, `getRecommendation`) and `file-analyzer.ts` (`analyzeMp4File`, the single pipeline). The previously duplicated single-file and folder analysis paths now both call `analyzeMp4File`; FFprobe/FFmpeg process spawning (with cancellation tracking) stays in the IPC layer and is injected as a `StreamAnalyzer`, so the domain has no Electron/child_process imports. Behavior differences between the two old copies were unified on the single-file variant (error message `Missing or corrupted essential atoms (moov / ftyp)`; FFmpeg-missing recommendation text). `ipc/mp4analyzer.ts` 1411 → ~850 lines. Tests: `tests/unit/mp4-diagnosis.spec.ts`.
+- **Still open**: repair commands are still template-literal strings parsed back by `parseFFmpegCommand` rather than allow-listed preset args (see 2026-09-21 entry).

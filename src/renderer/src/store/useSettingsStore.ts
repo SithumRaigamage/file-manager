@@ -7,6 +7,7 @@ export interface AppSettings {
   telemetryOptIn: boolean;
   crashReportingOptIn: boolean;
   historyRetentionDays: number;
+  mp4HistoryLimit: number; // keep newest N MP4 scans; 0 keeps all
 }
 
 interface SettingsStore {
@@ -23,7 +24,8 @@ const defaultSettings: AppSettings = {
   reducedMotion: false,
   telemetryOptIn: false,
   crashReportingOptIn: false,
-  historyRetentionDays: 90
+  historyRetentionDays: 90,
+  mp4HistoryLimit: 20
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({

@@ -49,6 +49,13 @@ type IpcResponse<T> =
 - `listBatches(filter?: HistoryFilter) → BatchRecord[]`
 - `revertBatch(batchId: string) → void`
 
+### `api.mp4analyzer` — scan history (post-MVP, added 2026-09-27)
+
+Scans are recorded automatically by the existing `analyzeFile` / `analyzeFolder` actions (completed or cancelled; superseded scans are not saved).
+
+- `listScans() → IpcResponse<Mp4ScanSummary[]>` — newest first; summary columns only, no per-file results.
+- `getScan(id: string) → IpcResponse<Mp4ScanRecord>` — full saved results, each with `missingOnDisk` computed at call time. `SCAN_NOT_FOUND` if the scan was pruned.
+
 ## Endpoints Detail — Example: `applyRename`
 
 **Request payload**
@@ -79,4 +86,4 @@ type IpcResponse<T> =
 
 ## Error Codes (initial set — expand as needed)
 
-- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`.
+- `FILE_NOT_FOUND`, `PERMISSION_DENIED`, `NAME_CONFLICT`, `FFMPEG_NOT_FOUND`, `CONVERSION_FAILED`, `INVALID_RULE_DEFINITION`, `WATCHER_LIMIT_EXCEEDED`, `SCAN_NOT_FOUND`, `HISTORY_LIST_FAILED`, `HISTORY_GET_FAILED`.

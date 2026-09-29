@@ -4,6 +4,7 @@ import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
 import { formatBytes, formatDuration } from '../../lib/utils'
+import { getHealthScore } from '../../lib/mp4-health'
 
 interface ResultsTableProps {
   results: Mp4FileResult[]
@@ -53,7 +54,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   }
 
   const corruptedFiles = useMemo(() => {
-    return results.filter((r) => r.corruptionLevel !== 'healthy')
+    // Files missing from disk (saved scans) can't be deleted
+    return results.filter((r) => r.corruptionLevel !== 'healthy' && !r.missingOnDisk)
   }, [results])
 
   const corruptedFilesCount = corruptedFiles.length
@@ -91,8 +93,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         let valB: any
 
         if (sortField === 'healthScore') {
-          valA = a.playbackVerification?.healthScore ?? 0
-          valB = b.playbackVerification?.healthScore ?? 0
+          valA = getHealthScore(a)
+          valB = getHealthScore(b)
         } else {
           valA = a[sortField] ?? ''
           valB = b[sortField] ?? ''
@@ -209,7 +211,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm text-gray-700">
               {filteredResults.map((r) => {
-                const score = r.playbackVerification?.healthScore ?? 100
+                const score = getHealthScore(r)
                 const duration = r.metadata?.duration || 0
                 const resolution = r.metadata?.resolution || 'Unknown'
 
@@ -220,8 +222,19 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                     onClick={() => onSelectFile(r)}
                   >
                     <td className="py-3.5 px-4 max-w-[240px] truncate">
-                      <div className="font-semibold text-gray-800 truncate" title={r.fileName}>
-                        {r.fileName}
+                      <div
+                        className="font-semibold text-gray-800 truncate flex items-center gap-1.5"
+                        title={r.fileName}
+                      >
+                        <span className="truncate">{r.fileName}</span>
+                        {r.missingOnDisk && (
+                          <span
+                            className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase bg-gray-100 text-gray-500"
+                            title="This file no longer exists at this path"
+                          >
+                            Missing
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {resolution !== 'Unknown' ? `${resolution} • ` : ''}
@@ -258,16 +271,18 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            window.api.showItemInFolder(r.filePath)
-                          }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                          title="Open file location in Finder"
-                        >
-                          <FolderOpen size={16} />
-                        </button>
+                        {!r.missingOnDisk && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.api.showItemInFolder(r.filePath)
+                            }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                            title="Open file location in Finder"
+                          >
+                            <FolderOpen size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -278,7 +293,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                         >
                           <Eye size={16} />
                         </button>
-                        {r.corruptionLevel !== 'healthy' && (
+                        {r.corruptionLevel !== 'healthy' && !r.missingOnDisk && (
                           <button
                             onClick={async (e) => {
                               e.stopPropagation()

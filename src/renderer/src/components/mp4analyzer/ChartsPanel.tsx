@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { Mp4FileResult } from '../../types/mp4analyzer'
 import { BarChart3, PieChartIcon, Activity } from 'lucide-react'
+import { getHealthScore } from '../../lib/mp4-health'
 
 interface ChartsPanelProps {
   results: Mp4FileResult[]
@@ -67,7 +68,7 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
         buckets[0].count++
         continue
       }
-      const score = r.playbackVerification?.healthScore ?? 100
+      const score = getHealthScore(r)
       if (score >= 98) {
         buckets[4].count++
       } else if (score >= 90) {
@@ -86,11 +87,11 @@ export function ChartsPanel({ results }: ChartsPanelProps): React.JSX.Element {
   const scatterData = useMemo(() => {
     return results.map((r) => {
       const sizeMB = Math.round((r.fileSize / (1024 * 1024)) * 100) / 100
-      const score = r.playbackVerification?.healthScore ?? 100
+      const score = getHealthScore(r)
       return {
         name: r.fileName,
         sizeMB,
-        healthScore: r.corruptionLevel === 'unrecoverable' ? 0 : score,
+        healthScore: score,
         level: r.corruptionLevel
       }
     })
