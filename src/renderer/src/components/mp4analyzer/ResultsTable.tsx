@@ -3,38 +3,17 @@ import { Search, ChevronDown, ChevronUp, Eye, FileVideo2, FolderOpen, Trash2 } f
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { formatBytes, formatDuration } from '../../lib/utils'
+import { getHealthScore } from '../../lib/mp4-health'
+import { toast } from '../../store/useToastStore'
 
 interface ResultsTableProps {
   results: Mp4FileResult[]
   onSelectFile: (file: Mp4FileResult) => void
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-function formatDuration(secs: number): string {
-  if (!secs || isNaN(secs)) return '00:00'
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = Math.floor(secs % 60)
-
-  const mStr = m.toString().padStart(2, '0')
-  const sStr = s.toString().padStart(2, '0')
-
-  if (h > 0) {
-    const hStr = h.toString().padStart(2, '0')
-    return `${hStr}:${mStr}:${sStr}`
-  }
-  return `${mStr}:${sStr}`
-}
-
 export function ResultsTable({ results, onSelectFile }: ResultsTableProps): React.JSX.Element {
-  const { removeResult, removeFolderResults, scannedFolder } = useMp4AnalyzerStore()
+  const trashFiles = useMp4AnalyzerStore((s) => s.trashFiles)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<keyof Mp4FileResult | 'healthScore'>('fileName')
@@ -76,7 +55,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   }
 
   const corruptedFiles = useMemo(() => {
-    return results.filter((r) => r.corruptionLevel !== 'healthy')
+    // Files missing from disk (saved scans) can't be deleted
+    return results.filter((r) => r.corruptionLevel !== 'healthy' && !r.missingOnDisk)
   }, [results])
 
   const corruptedFilesCount = corruptedFiles.length
@@ -84,20 +64,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   const handleDeleteAllCorrupted = async (): Promise<void> => {
     const filePaths = corruptedFiles.map((r) => r.filePath)
     if (filePaths.length === 0) return
-
-    try {
-      const res = await window.api.mp4analyzer.deleteMultipleFiles(filePaths, scannedFolder)
-      if (res.success) {
-        res.deletedFolders.forEach((folder) => {
-          removeFolderResults(folder)
-        })
-        res.deletedFiles.forEach((file) => {
-          removeResult(file)
-        })
-      }
-    } catch (err) {
-      alert(`Failed to delete files: ${(err as Error).message}`)
-    }
+    const error = await trashFiles(filePaths)
+    if (error) toast.error(error)
   }
 
   const filteredResults = useMemo(() => {
@@ -114,8 +82,8 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         let valB: any
 
         if (sortField === 'healthScore') {
-          valA = a.playbackVerification?.healthScore ?? 0
-          valB = b.playbackVerification?.healthScore ?? 0
+          valA = getHealthScore(a)
+          valB = getHealthScore(b)
         } else {
           valA = a[sortField] ?? ''
           valB = b[sortField] ?? ''
@@ -139,9 +107,9 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
+    <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md border border-white/40 border-white/20 rounded-2xl overflow-hidden shadow-xs">
       {/* Controls Bar */}
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4">
+      <div className="p-4 border-b border-white/20 bg-transparent flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -149,7 +117,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             placeholder="Search scanned files..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/40"
           />
         </div>
 
@@ -159,7 +127,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-gray-700 font-medium cursor-pointer"
+              className="text-sm border border-white/30 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/40 text-gray-700 font-medium cursor-pointer"
             >
               <option value="all">All States</option>
               <option value="healthy">Healthy</option>
@@ -177,7 +145,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
               title="Delete all corrupted videos (minor, moderate, severe, and unrecoverable)"
             >
               <Trash2 size={14} />
-              Delete All Corrupted ({corruptedFilesCount})
+              Trash All Corrupted ({corruptedFilesCount})
             </button>
           )}
         </div>
@@ -187,7 +155,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
       <div className="flex-1 overflow-auto">
         {filteredResults.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-20 px-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3">
+            <div className="w-12 h-12 rounded-xl bg-transparent flex items-center justify-center text-gray-400 mb-3">
               <FileVideo2 size={24} />
             </div>
             <h3 className="text-sm font-semibold text-gray-800">No matching videos</h3>
@@ -200,27 +168,27 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/30 text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
+              <tr className="border-b border-white/20 bg-transparent text-xs font-bold text-gray-400 uppercase tracking-wider select-none">
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('fileName')}
                 >
                   File Name {renderSortIcon('fileName')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('fileSize')}
                 >
                   Size {renderSortIcon('fileSize')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('healthScore')}
                 >
                   Health Score {renderSortIcon('healthScore')}
                 </th>
                 <th
-                  className="py-3.5 px-4 cursor-pointer hover:bg-gray-50/50"
+                  className="py-3.5 px-4 cursor-pointer hover:bg-transparent"
                   onClick={() => handleSort('corruptionLevel')}
                 >
                   Status {renderSortIcon('corruptionLevel')}
@@ -232,19 +200,30 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm text-gray-700">
               {filteredResults.map((r) => {
-                const score = r.playbackVerification?.healthScore ?? 100
+                const score = getHealthScore(r)
                 const duration = r.metadata?.duration || 0
                 const resolution = r.metadata?.resolution || 'Unknown'
 
                 return (
                   <tr
                     key={r.filePath}
-                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                    className="hover:bg-transparent transition-colors group cursor-pointer"
                     onClick={() => onSelectFile(r)}
                   >
                     <td className="py-3.5 px-4 max-w-[240px] truncate">
-                      <div className="font-semibold text-gray-800 truncate" title={r.fileName}>
-                        {r.fileName}
+                      <div
+                        className="font-semibold text-gray-800 truncate flex items-center gap-1.5"
+                        title={r.fileName}
+                      >
+                        <span className="truncate">{r.fileName}</span>
+                        {r.missingOnDisk && (
+                          <span
+                            className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase bg-gray-100 text-gray-500"
+                            title="This file no longer exists at this path"
+                          >
+                            Missing
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {resolution !== 'Unknown' ? `${resolution} • ` : ''}
@@ -281,17 +260,19 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            window.api.showItemInFolder(r.filePath)
-                          }}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                          title="Open file location in Finder"
-                        >
-                          <FolderOpen size={16} />
-                        </button>
-                        <button
+                        {!r.missingOnDisk && (
+                          <button aria-label="Open file location in Finder"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.api.showItemInFolder(r.filePath)
+                            }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                            title="Open file location in Finder"
+                          >
+                            <FolderOpen size={16} />
+                          </button>
+                        )}
+                        <button aria-label="View detailed diagnostics"
                           onClick={(e) => {
                             e.stopPropagation()
                             onSelectFile(r)
@@ -301,25 +282,15 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
                         >
                           <Eye size={16} />
                         </button>
-                        {r.corruptionLevel !== 'healthy' && (
-                          <button
+                        {r.corruptionLevel !== 'healthy' && !r.missingOnDisk && (
+                          <button aria-label="Move corrupted video to Trash"
                             onClick={async (e) => {
                               e.stopPropagation()
-                              try {
-                                const res = await window.api.mp4analyzer.deleteFile(r.filePath)
-                                if (res.success) {
-                                  if (res.action === 'folder') {
-                                    removeFolderResults(res.folderPath)
-                                  } else if (res.action === 'file') {
-                                    removeResult(res.filePath)
-                                  }
-                                }
-                              } catch (err) {
-                                alert(`Failed to delete: ${(err as Error).message}`)
-                              }
+                              const error = await trashFiles([r.filePath])
+                              if (error) toast.error(error)
                             }}
-                            className="p-1.5 rounded-lg text-gray-455 hover:text-red-605 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                            title="Delete corrupted video file"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                            title="Move corrupted video to Trash"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -334,7 +305,7 @@ export function ResultsTable({ results, onSelectFile }: ResultsTableProps): Reac
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 text-xs text-gray-400 flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-white/20 bg-transparent text-xs text-gray-400 flex items-center justify-between">
         <span>
           Showing {filteredResults.length} of {results.length} files
         </span>

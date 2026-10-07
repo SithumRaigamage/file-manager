@@ -14,6 +14,22 @@ export function formatBytes(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
+export function formatDuration(secs: number, fallback = '00:00'): string {
+  if (!secs || isNaN(secs)) return fallback
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = Math.floor(secs % 60)
+
+  const mStr = m.toString().padStart(2, '0')
+  const sStr = s.toString().padStart(2, '0')
+
+  if (h > 0) {
+    const hStr = h.toString().padStart(2, '0')
+    return `${hStr}:${mStr}:${sStr}`
+  }
+  return `${mStr}:${sStr}`
+}
+
 export function getFileIcon(ext: string): string {
   const e = ext.toLowerCase().replace('.', '')
   if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', 'vid'].includes(e)) return '🎬'

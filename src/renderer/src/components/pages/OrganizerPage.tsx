@@ -4,6 +4,7 @@ import { useOrganizerStore } from '../../store/useOrganizerStore'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card'
 import { FilePreviewList, PreviewListItem } from '../shared/FilePreviewList'
+import { basename } from '../../lib/paths'
 
 export function OrganizerPage(): React.JSX.Element {
   const {
@@ -15,6 +16,7 @@ export function OrganizerPage(): React.JSX.Element {
     error,
     loadFolder,
     previewQuickRule,
+    previewOrganizeByDate,
     applyOrganize,
     toggleWatch
   } = useOrganizerStore()
@@ -29,20 +31,21 @@ export function OrganizerPage(): React.JSX.Element {
   const handlePreviewImages = () => previewQuickRule('images')
   const handlePreviewVideos = () => previewQuickRule('videos')
   const handlePreviewDocs = () => previewQuickRule('docs')
-  
+  const handlePreviewByDate = () => previewOrganizeByDate()
+
   const handleExecute = () => applyOrganize()
 
   // Map to shared preview list format
   const mappedPreviewItems: PreviewListItem[] = previewItems.map((item, idx) => ({
     id: String(idx),
-    originalName: item.originalPath.split('/').pop() || '',
-    newName: item.proposedDestination.split('/').pop() || '',
+    originalName: basename(item.originalPath),
+    newName: basename(item.proposedDestination),
     action: item.action
   }))
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Smart File Organizer</h2>
@@ -55,8 +58,8 @@ export function OrganizerPage(): React.JSX.Element {
 
       <div className="flex-1 p-6 flex gap-6 overflow-hidden">
         {/* Left Column: Controls */}
-        <div className="w-80 flex flex-col gap-4">
-          <Card>
+        <div className="w-80 flex flex-col gap-4 overflow-y-auto">
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FolderInput size={16} className="text-blue-600" />
@@ -75,7 +78,7 @@ export function OrganizerPage(): React.JSX.Element {
                 {currentFolder ? (
                   <div className="text-center px-2">
                     <p className="text-xs font-medium text-slate-700 truncate max-w-full">
-                      {currentFolder.split('/').pop()}
+                      {basename(currentFolder)}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate max-w-full mt-1">
                       {files.length} files found
@@ -90,68 +93,99 @@ export function OrganizerPage(): React.JSX.Element {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle>Quick Rules</CardTitle>
               <CardDescription>Instant sorting presets</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button variant="outline" className="w-full justify-start" onClick={handlePreviewImages} disabled={!currentFolder || isLoading}>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handlePreviewImages}
+                disabled={!currentFolder || isLoading}
+              >
                 Sort Images
               </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={handlePreviewVideos} disabled={!currentFolder || isLoading}>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handlePreviewVideos}
+                disabled={!currentFolder || isLoading}
+              >
                 Sort Videos
               </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={handlePreviewDocs} disabled={!currentFolder || isLoading}>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handlePreviewDocs}
+                disabled={!currentFolder || isLoading}
+              >
                 Sort Documents
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handlePreviewByDate}
+                disabled={!currentFolder || isLoading}
+              >
+                Organize by Date
               </Button>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">✨ AI Features</CardTitle>
               <CardDescription>Intelligent categorization</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 text-indigo-600" 
+              <Button
+                variant="outline"
+                className="w-full justify-start border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 text-indigo-600"
                 onClick={async () => {
-                  if (!currentFolder) return;
-                  const categories = ['Invoices', 'Resumes', 'Receipts', 'Screenshots', 'Projects', 'Personal', 'Other'];
+                  if (!currentFolder) return
+                  const categories = [
+                    'Invoices',
+                    'Resumes',
+                    'Receipts',
+                    'Screenshots',
+                    'Projects',
+                    'Personal',
+                    'Other'
+                  ]
                   // Set loading state (reusing main isLoading for simplicity)
-                  useOrganizerStore.setState({ isLoading: true, error: null });
-                  
-                  const statusRes = await window.fileflow.ai.checkStatus();
+                  useOrganizerStore.setState({ isLoading: true, error: null })
+
+                  const statusRes = await window.fileflow.ai.checkStatus()
                   if (!statusRes.ok) {
-                    useOrganizerStore.setState({ 
-                      isLoading: false, 
-                      error: statusRes.error.message 
-                    });
-                    return;
+                    useOrganizerStore.setState({
+                      isLoading: false,
+                      error: statusRes.error.message
+                    })
+                    return
                   }
 
                   if (!statusRes.data.isAvailable) {
-                    useOrganizerStore.setState({ 
-                      isLoading: false, 
-                      error: statusRes.data.message || 'Ollama is not running locally.' 
-                    });
-                    return;
+                    useOrganizerStore.setState({
+                      isLoading: false,
+                      error: statusRes.data.message || 'Ollama is not running locally.'
+                    })
+                    return
                   }
 
-                  const res = await window.fileflow.ai.suggestCategories(currentFolder, categories);
+                  const res = await window.fileflow.ai.suggestCategories(currentFolder, categories)
                   if (res.ok) {
                     const aiPreviewItems = res.data.map((s: any) => ({
                       originalPath: s.path,
                       proposedDestination: `${currentFolder}/${s.suggestedCategory}/${s.file}`,
                       action: 'move' as const
-                    }));
-                    useOrganizerStore.getState().setPreviewItems(aiPreviewItems);
+                    }))
+                    useOrganizerStore.getState().setPreviewItems(aiPreviewItems)
                   } else {
-                    useOrganizerStore.setState({ error: res.error.message });
+                    useOrganizerStore.setState({ error: res.error.message })
                   }
-                  useOrganizerStore.setState({ isLoading: false });
+                  useOrganizerStore.setState({ isLoading: false })
                 }}
                 disabled={!currentFolder || isLoading}
               >
@@ -160,16 +194,23 @@ export function OrganizerPage(): React.JSX.Element {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle>Auto-Pilot</CardTitle>
               <CardDescription>Watch folder in background</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                variant={isWatching ? "destructive" : "default"} 
-                className="w-full" 
-                onClick={() => toggleWatch({ id: 'dummy', name: 'Watching', type: 'quick', quickRuleId: 'images' })}
+              <Button
+                variant={isWatching ? 'destructive' : 'default'}
+                className="w-full"
+                onClick={() =>
+                  toggleWatch({
+                    id: 'dummy',
+                    name: 'Watching',
+                    type: 'quick',
+                    quickRuleId: 'images'
+                  })
+                }
                 disabled={!currentFolder || isLoading}
               >
                 {isWatching ? 'Stop Watching' : 'Start Watching'}
@@ -179,28 +220,32 @@ export function OrganizerPage(): React.JSX.Element {
         </div>
 
         {/* Right Column: Preview & Action */}
-        <div className="flex-1 flex flex-col bg-white border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md border border-white/40 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/20 bg-white/5 flex items-center justify-between backdrop-blur-md">
             <h3 className="font-semibold text-slate-700 flex items-center gap-2">
               <Eye size={16} />
               Operation Preview
             </h3>
-            <Button size="sm" onClick={handleExecute} disabled={previewItems.length === 0 || isLoading}>
+            <Button
+              size="sm"
+              onClick={handleExecute}
+              disabled={previewItems.length === 0 || isLoading}
+            >
               <Play size={14} className="mr-2" />
               Execute Organizing
             </Button>
           </div>
-          
+
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
-              <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-10 flex items-center justify-center">
                 <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 shadow-sm max-w-md text-center">
                   <p className="font-semibold">Error</p>
                   <p className="text-sm mt-1">{error}</p>
                 </div>
               </div>
             )}
-            
+
             <FilePreviewList items={mappedPreviewItems} />
           </div>
         </div>

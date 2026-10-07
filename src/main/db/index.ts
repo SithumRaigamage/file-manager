@@ -130,6 +130,27 @@ sqlite.exec(`
     created_at TEXT NOT NULL,
     UNIQUE(file_id, tag_id)
   );
+
+  CREATE TABLE IF NOT EXISTS mp4_scans (
+    id TEXT PRIMARY KEY,
+    target_path TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    files_found INTEGER NOT NULL,
+    files_scanned INTEGER NOT NULL,
+    total_size INTEGER NOT NULL,
+    healthy INTEGER NOT NULL,
+    corrupted INTEGER NOT NULL,
+    repairable INTEGER NOT NULL,
+    unrecoverable INTEGER NOT NULL,
+    diff TEXT,
+    results TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_mp4_scans_finished_at ON mp4_scans(finished_at);
+  CREATE INDEX IF NOT EXISTS idx_mp4_scans_target ON mp4_scans(target_path, finished_at);
 `);
 
 // Lightweight migration for new columns
@@ -141,5 +162,25 @@ try {
     console.warn('Failed to migrate app_settings:', error.message);
   }
 }
+
+try {
+  sqlite.exec(`ALTER TABLE app_settings ADD COLUMN mp4_history_limit INTEGER NOT NULL DEFAULT 20;`);
+} catch (error: any) {
+  if (!error.message.includes('duplicate column name')) {
+    console.warn('Failed to migrate app_settings:', error.message);
+  }
+}
+
+try {
+  sqlite.exec(`ALTER TABLE app_settings ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';`);
+} catch (error: any) {
+  if (!error.message.includes('duplicate column name')) {
+    console.warn('Failed to migrate app_settings:', error.message);
+  }
+}
+
+// Settings are read/updated by id 'default'; without this row every update matched
+// zero rows and was silently dropped. All columns have defaults.
+sqlite.exec(`INSERT OR IGNORE INTO app_settings (id) VALUES ('default');`);
 
 export const db = drizzle(sqlite, { schema });

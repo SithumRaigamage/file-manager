@@ -23,6 +23,62 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - Replaced `tasks/08-V2.md` with six phase-specific task files (`08-v2.0-Platform-Foundation.md` through `13-v3.0-Enterprise.md`); updated `tasks/00-MASTER-ROADMAP.md` accordingly.
 - **No change to `tasks/03-MVP.md` scope** — MVP remains Organizer (Quick Rules) + Renamer (core patterns) + Converter (FFmpeg batch), per the standing strategic decision above.
 
+## 2026-09-21 — Duplication Cleanup (code-level dedup + dead-code removal)
+
+- **Root cause**: an audit of the codebase found the same filename-conflict-resolution logic (`while (fs.existsSync(...)) append " (n)"`) independently reimplemented in 7 places (`ipc/organizer.ts` ×2, `ipc/searcher.ts`, `domain/renamer/rename-executor.ts`, `domain/renamer/rename-evaluator.ts`, `domain/watcher/watcher-service.ts`, `domain/converter/converter-queue.ts`), and directory-tree walking independently reimplemented in 3 places (`features/duplicates/duplicate-scanner.ts`, `features/search/indexer-worker.ts`, `ipc/searcher.ts`), with `domain/organizer/conflict-detector.ts` — the file named for this job — not actually implementing it (it only detects circular watch-folder loops).
+- Added `src/main/domain/shared/unique-path.ts` (`resolveUniquePath`, `resolveUniqueName`) and `src/main/domain/shared/directory-walker.ts` (`walkDirectory`) per the Domain layer rule in `docs/SYSTEM-ARCHITECTURE.md`; all 7 conflict-resolution call sites and all 3 directory-walk call sites now use the shared helpers instead of ad hoc copies. Each caller's existing skip/ignore/cancellation behavior was preserved exactly (no functional change to what gets scanned or how conflicts are named).
+- Removed the dead legacy `organizer:preview`/`organizer:execute`/`organizer:scan`/`organizer:startWatching`/`organizer:stopWatching` and `renamer:preview`/`renamer:execute`/`renamer:undo`/`renamer:listFiles` IPC handlers from `ipc/organizer.ts` / `ipc/renamer.ts`, plus their now-unused preload bindings (`window.api.organizer`, `window.api.renamer`). These were an unreferenced parallel implementation of Organizer/Renamer (confirmed zero call sites in the renderer) left over from the Phase-0 `fileflow` API migration; the legacy renamer path in particular bypassed `HistoryService` entirely, so renames done through it were not undoable.
+- **Correctness fix surfaced by the above**: `organizer:applyOrganize` (the handler the UI actually calls) never logged completed moves to `HistoryService`, so Organizer operations were not undoable and never appeared in the History view — a direct gap against the CLAUDE.md rule that every destructive operation must be undoable. Fixed by routing `move` results through `HistoryService.logBatch('organize', ..., true)`, matching the pattern `RenameExecutor` and `ConverterQueue` already use. `copy` results are intentionally not logged as reversible (the original file is untouched by a copy, and naively reverting via rename-back would collide with it).
+- Consolidated 5x-duplicated `formatBytes`/`formatDuration` implementations in the renderer (`components/mp4analyzer/ResultsTable.tsx`, `FileDetailDrawer.tsx`, `components/pages/LargeFileAnalyzerPage.tsx`) onto the existing canonical `formatBytes` in `renderer/src/lib/utils.ts`, and added a canonical `formatDuration` there (parameterized fallback text to preserve each page's existing copy). `SearcherPage.tsx`'s `formatBytes` was left as-is — it uses a deliberately different compact display style for its dense file-browser view, not accidental drift. Also merged `SearcherPage.tsx`'s verbatim-duplicated `getFileIcon`/`getLargeFileIcon` into one function parameterized by icon size.
+- **Not changed** (scope explicitly limited to code-level dedup, no feature/page removal): the product-level overlaps the audit also found — two independent search engines (`SearcherPage`/`ipc/searcher.ts` live-scan vs. `AdvancedSearchPage`/`ipc/indexer.ts` FTS index), `ImageToolkitPage`'s standalone client-side converter bypassing the Converter architecture, `mp4analyzer.ts`'s separate FFmpeg-invocation path (including template-literal-built repair commands, weaker than the allow-listed-args pattern `ffmpeg-wrapper.ts` uses), and the nascent `WorkflowEngine` vs. Organizer's `RuleEvaluator`/`WatcherService` — remain as-is. These are flagged here as open follow-ups, not resolved.
+- Also reconfirmed, not newly discovered: the amount of already-implemented post-MVP surface area (duplicate finder, search+indexer, large-file analyzer/dashboard, automation, AI service, MP4 analyzer, image toolkit, tags — roughly half of all IPC namespaces and renderer pages) versus the standing MVP scope in `tasks/03-MVP.md`. No action taken here per the "don't silently diverge" rule — noted for founder awareness only, consistent with the 2026-08-05 entry's decision to treat the v2.0+ vision as a *roadmap*, not current MVP scope.
+
+## 2026-09-22 — Organizer: "Organize by Date" Quick Rule
+
+- **What changed and why**: added a new Organizer Quick Rule, requested directly by the founder, that moves everything in a selected folder — files *and* subfolders — into `YYYY-MM-DD/` subfolders named after each item's own last-modified date. This was not an existing MVP checklist item (`tasks/03-MVP.md` only listed Images/Videos/Docs/Archives), so it's logged here as an explicit, requested scope addition rather than a silent expansion.
+- **Design decisions**:
+  - New domain file `src/main/domain/organizer/date-grouper.ts` (`dateBucketName`, `isDateBucketName`) rather than extending `RuleEvaluator`/`SmartCondition`: existing quick/smart rules answer "does this file match" against one fixed destination, but date-grouping needs a *different* destination per item computed from that item's own mtime — a preview-generation strategy, not a matchable condition.
+  - Bucket dates use local time (`Date.getFullYear/getMonth/getDate`), not UTC, so an item modified late in the evening lands in the day the user experienced it.
+  - The new `organizer:previewOrganizeByDate` handler is the **first** Organizer preview path to process directories as well as files (`entry.isDirectory()`) — every prior handler (`listFolder`, `previewQuickRule`, `previewSmartRule`) only ever looked at `entry.isFile()`, so folders were previously invisible to the Organizer entirely. Subfolders move as whole units, bucketed by their own mtime (not recursed into).
+  - Re-running the rule on an already-organized folder skips directories already named as a date bucket (`isDateBucketName`), so `2026-09-22/` doesn't get swept into itself.
+  - No changes were needed to `organizer:applyOrganize`, `resolveUniquePath`, or `HistoryService` — all three already handle directories correctly (`fs.renameSync`, `fs.existsSync`-based conflict resolution, and batch undo logging), so preview/apply/undo for this feature come for free from existing infrastructure.
+- **Docs touched**: `docs/API-CONTRACT.md` (new `previewOrganizeByDate` action), `docs/DATA-MODEL.md` (`RuleSet.quickRuleId` union), `tasks/03-MVP.md` (new checklist line), this file.
+- **Pre-existing gap noted, not fixed here**: the repo has no unit test runner wired up (only Playwright e2e via `npm run test:e2e`); `rule-evaluator.ts` and other domain files have no unit tests despite `CLAUDE.md`'s stated Testing Expectations. This feature's coverage was added as an e2e smoke scenario (`tests/e2e/smoke.spec.ts`) consistent with existing precedent, not as a new unit test framework introduced as a side effect of an unrelated feature.
+- **No new open decisions raised.**
+
+## 2026-09-27 — Fix: tool state lost when switching tabs
+
+- **Bug**: doing work in a tool (e.g. an MP4 Analyzer folder scan) and switching to another tab (e.g. Duplicates) discarded all of it; the user had to redo the task.
+- **Root cause**: PR #5 (`fix/reset-tab-state`, commit `a312434`) added `useEffect(() => () => reset(), [reset])` to `Mp4AnalyzerPage`, `DuplicatesPage`, `OrganizerPage`, `RenamerPage` and `ConverterPage`. React Router unmounts a page on every route change, so each tab switch cleared that tool's global Zustand store. For Duplicates it was worse: `useDuplicateStore.reset()` also calls `duplicates.clear()` over IPC, deleting the scan results in the main process. For Converter it also dropped `jobs`, hiding the progress of conversions still running.
+- **Fix**: removed the unmount resets from all five pages (the `reset` actions remain for explicit use, e.g. MP4 Analyzer still resets when a new scan starts). Moved `DuplicatesPage`'s `selectedFolder` and keep-file `selections` from component `useState` into `useDuplicateStore` so they also persist; `resolveGroup` now clears the resolved group's selection. `RenamerPage` seeds its prefix/suffix/find/replace inputs from the persisted `pattern.steps` so the inputs match the persisted preview.
+- **Tests**: new e2e case in `tests/e2e/smoke.spec.ts` ("Tool state should survive navigating to another tab and back") — verified it fails against the pre-fix `DuplicatesPage` and passes with the fix.
+- **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend section: state-persistence rule), this file.
+- **No new open decisions raised.**
+
+## 2026-09-27 — Keep all tool pages alive across tab switches; fix jumping scan progress bars
+
+- **Follow-up to the entry above**: removing the unmount resets only fixed store-backed state. Page-local `useState` (Advanced Search query/folder, Image Toolkit image and options, Automation's workflow builder, Storage Analytics data, MP4 results-table filters, etc.) was still discarded on every tab switch, because React Router unmounts inactive routes.
+- **Fix — keep-alive routing**: `App.tsx` now renders pages through a new `KeepAliveRoutes` outlet that mounts each page on first visit and keeps it mounted (hidden) afterwards. Pages that previously loaded data in a mount-only `useEffect` (Dashboard, History, Automation, Duplicates, Storage Analytics) now use `useTabActivated` (`renderer/src/lib/tab-activity.ts`) so they still refresh each time they are shown. Settings keeps loading once, since it saves each change immediately. Chosen over moving every page's local state into stores: it covers all current and future pages (including nested components' state and live progress subscriptions) without rewriting each one. Trade-off: visited pages stay in memory for the session — acceptable for a fixed set of ~13 pages.
+- **Bug — progress bar jumping up and down during folder scans**: root cause was two scans running concurrently and both emitting on the same progress channel. It was easy to trigger via the tab-reset bug (leave mid-scan → return to an "idle" page → scan again).
+  - `ipc/mp4analyzer.ts`: no guard existed — a new `analyzeFile`/`analyzeFolder` reset `cancelRequested` and ran alongside the old loop. Added a scan generation counter (`beginScan`): a new scan kills the previous scan's ffmpeg processes, and a superseded scan stops and emits no further progress. The renderer also ignores results from a superseded scan. Also fixed ffmpeg stderr parsing to split on `\r` as well as `\n` (ffmpeg rewrites its stats line with `\r`, so the first, stale `time=` value was being read).
+  - `ipc/duplicates.ts`: progress from a cancelled/superseded scanner is dropped; the old scan's `finally` no longer nulls out the *new* scanner reference.
+  - `features/search/search-engine.ts`: indexer workers are now stopped with `terminate()` (the `cancel` message could not interrupt the worker's synchronous directory walk, so the old worker kept emitting progress), progress is only forwarded from the current worker, and a finishing old worker no longer terminates the new one (`this.activeWorker?.terminate()` previously hit the new worker).
+- **Tests**: new e2e case "Page-local UI state should survive navigating to another tab and back". The concurrent-scan fixes have no automated test (they need real media files/timing); verified by typecheck and code review only.
+- **Docs touched**: `docs/SYSTEM-ARCHITECTURE.md` (Frontend: keep-alive routing, `useTabActivated`, scan-superseding rule), this file.
+- **No new open decisions raised.**
+
+## 2026-09-27 — MP4 Integrity Analyzer: Scan History
+
+- **Requested scope addition** (founder request; the MP4 Analyzer is post-MVP surface, so this is logged as explicit scope, not silent expansion). Contents were chosen item-by-item by the founder:
+  - **Approved**: per-scan row with date/time, target, duration; health counts + total size; status (completed / "Cancelled — X of Y files"); change since last scan of the same target; reopening a scan restores full results into Files Table / Visual Diagnostics / Export Reports including error logs and atom structure; auto-keep last N scans (Settings); "Missing" flag for files no longer on disk.
+  - **Rejected** (do not build without a new request): one-click re-scan, export from history, delete single scan, clear all, search/filter, repair tracking, per-file health timeline, labels/notes/pinning.
+- **Design**: new `mp4_scans` table (`docs/DATA-MODEL.md` → `Mp4Scan`); per-file results stored as a JSON column (same approach as `duplicate_groups.files`). Diff/summary logic is pure domain code in `src/main/domain/mp4analyzer/scan-diff.ts`; persistence in `src/main/db/mp4-scan-repo.ts`; the existing `analyzeFile`/`analyzeFolder` handlers record each scan (best-effort — a failed save never fails the scan). Superseded scans are not recorded. `missingOnDisk` is computed on reopen, never stored. History limit defaults to **20** (not higher) because storing logs + atoms makes large-folder scans several MB each.
+- **Pre-existing bug fixed along the way**: no `app_settings` row was ever created, so `settings:update` (which updates `WHERE id = 'default'`) silently changed nothing — no setting in the Settings page was actually persisting. The DB init now seeds the `'default'` row (`INSERT OR IGNORE`).
+- **Test isolation**: `tests/e2e/smoke.spec.ts` now launches Electron with a temporary `--user-data-dir`, so e2e runs no longer read or modify the real app database (previously they did — e.g. the duplicates test cleared real duplicate results, and the new history-pruning test would have deleted real scan history).
+- **Tests**: new e2e case covering save, diff (new/removed files), missing-file flag via IPC and UI, and pruning to N.
+- **Docs touched**: `docs/DATA-MODEL.md`, `docs/API-CONTRACT.md`, `tasks/03-MVP.md`, this file.
+- **No new open decisions raised.**
+
 ## Template for Future Entries
 
 ```
@@ -31,3 +87,83 @@ All notable updates to FileFlow's `docs/` and `tasks/` documentation are recorde
 - Which docs/tasks files were touched.
 - Any new open decisions raised.
 ```
+
+## 2026-09-29 — MP4 Analyzer: incomplete-download detection & honest repair advice
+
+- **Root cause**: a fully sized but never-completed download (preallocated by a torrent client / segmented downloader, ~97% zero bytes) was reported as "Missing MOOV atom" with a medium-confidence FFmpeg `-c copy` repair and a 100% health score. That repair can never succeed — FFmpeg cannot demux an MP4 with no `moov` — and the 100% came from a `?? 100` fallback for files that never get a playback score.
+- Added `src/main/domain/mp4analyzer/zero-fill.ts`: samples 32 evenly spaced 64 KB blocks (incl. first/last); if ≥10% are all-zero the file is reported as an **incomplete download** (unrecoverable, no repair command). Encoded A/V essentially never contains a 64 KB zero run, so the threshold is conservative. Runs before the container parse in both analysis paths (`analyzeSingleFile` and the directory scan). Unit tests: `tests/unit/zero-fill.spec.ts` (Playwright runner, pure Node — no Electron).
+- `getRecommendation`: when `moov` is absent, no FFmpeg command is offered; guidance points to `untrunc` with a same-device reference file. Other container damage keeps the stream-copy attempt, downgraded to low confidence.
+- Health score for `unrecoverable` results is now 0% everywhere (table, drawer, charts, PDF report, CSV export) via `renderer/src/lib/mp4-health.ts`; the CSV export's `|| 100` (which also mapped a real 0 to 100) was fixed.
+- File detail drawer: portaled to `document.body` and made opaque — the 40%-opacity glass panel let page content bleed through, and a transformed ancestor clipped its fixed-position backdrop.
+- **Domain extraction (same day)**: the MP4 analysis pipeline moved out of `ipc/mp4analyzer.ts` into `src/main/domain/mp4analyzer/` — `atom-parser.ts` (box walker, `validateContainer`), `diagnosis.ts` (`checkBasicFile`, `buildPlaybackVerification`, `determineCorruption`, `getRecommendation`) and `file-analyzer.ts` (`analyzeMp4File`, the single pipeline). The previously duplicated single-file and folder analysis paths now both call `analyzeMp4File`; FFprobe/FFmpeg process spawning (with cancellation tracking) stays in the IPC layer and is injected as a `StreamAnalyzer`, so the domain has no Electron/child_process imports. Behavior differences between the two old copies were unified on the single-file variant (error message `Missing or corrupted essential atoms (moov / ftyp)`; FFmpeg-missing recommendation text). `ipc/mp4analyzer.ts` 1411 → ~850 lines. Tests: `tests/unit/mp4-diagnosis.spec.ts`.
+- **Still open**: repair commands are still template-literal strings parsed back by `parseFFmpegCommand` rather than allow-listed preset args (see 2026-09-21 entry).
+
+## 2026-09-29 — Audit Phase 1: critical data-loss fixes (C1–C6)
+
+Source: the "FileFlow Code Audit" doc (2026-09-29). Fixes the six paths that could permanently destroy user files, restoring the CLAUDE.md rule that every destructive action is previewable and undoable.
+
+- **Decision — the OS Trash is the undo for deletes.** All deletes (MP4 analyzer, duplicates) now go through `features/shared/trash.ts` (`shell.trashItem`) instead of `unlink`/`rm -rf`; the user restores from the Trash. Confirmations moved to the main process (`features/shared/confirm-dialog.ts`) with Cancel as default so they cannot be skipped or confirmed by an accidental Enter.
+- **C1/C2**: removed folder-level deletion from the MP4 analyzer entirely (and `isSafeToDeleteFolder`, which held a hardcoded developer path). "Delete All Corrupted" now trashes only the corrupted files. API: `deleteFile`/`deleteMultipleFiles` return `IpcResponse<TrashResult>`; `scannedFolder` parameter dropped. Renderer: the three duplicated delete call sites use one `trashFiles` store action.
+- **C3**: duplicates — `domain/duplicates/resolution.ts` validates the request against the stored group (keeper in group and on disk, removals ⊂ group, keeper not removed). UI: the per-file control is now a "Keep" radio, removals are labelled "TO TRASH", the button reads "Keep 1, move N to Trash", and failures are reported instead of a false "resolved successfully".
+- **C4**: Searcher — collect now moves with `domain/shared/move-path.ts` (atomic rename; copy+delete only on `EXDEV`, never on other errors; never overwrites; never into itself) and logs an undoable `organize` history batch. Keyword automation is now scan → review (`components/searcher/AutomationPreview.tsx`) → move; `domain/searcher/collect-plan.ts` assigns each item to one keyword and drops nested items and anything touching the destination.
+- **C5**: no delete path remains that bypasses the Trash; every move path records history.
+- **C6**: undo (`domain/history/revert.ts`) never overwrites a file that now occupies the original location, and failed items stay in the batch for retry instead of the batch being deleted; `revertBatch`/`undoRename` return a `RevertSummary` the History page surfaces.
+- Shared `IpcResponse<T>` type moved to `src/main/ipc/ipc-response.ts` (preload re-exports it). Added `npm run test:unit`; tests: `tests/unit/data-safety.spec.ts`.
+- Docs: `API-CONTRACT.md` gained the destructive-action rules and the changed signatures.
+
+## 2026-09-29 — Audit Phase 2: security hardening (S1–S7)
+
+- **S1 `media://`**: handler moved to `features/media/media-protocol.ts`. Serves only regular files whose symlink-resolved path has an allow-listed media type (`domain/shared/media-request.ts`); `bypassCSP`/`corsEnabled` removed and CSP gained `media-src 'self' media:`. URLs are now `media://local/<encodeURIComponent(path)>` (`renderer/src/lib/media-url.ts`), which also retires the lower-cased `/users/` host hack. Range parsing is RFC-correct (suffix ranges, 416) — this also resolves audit item **B9**.
+- **S2**: preload no longer exposes `@electron-toolkit/preload`'s `electronAPI` (raw `ipcRenderer` + `process`); dependency removed, unused `Versions.tsx` deleted, non-isolated `window.*` fallback removed.
+- **S3**: MP4 repair takes an allow-listed `RepairId`; `domain/mp4analyzer/repair.ts` builds the argv (with `-n`) and the display command. `parseFFmpegCommand` deleted.
+- **S4**: converter presets live in `domain/converter/presets.ts`; `enqueueConversion(paths, presetId)`; FFmpeg `-y` replaced by `-n`. The unused legacy `converter:convert` handler and `window.api.converter` were removed — this also resolves audit item **B6** (silent overwrite + `../` in output names).
+- **S5**: `shell:openPath` (now in `ipc/shell.ts`) refuses launchable/executable targets (`domain/shared/open-policy.ts`); the Searcher falls back to "reveal in folder". `setWindowOpenHandler` opens only `http(s)` URLs.
+- **S6**: `sandbox: true` and a `will-navigate` guard.
+- **S7**: crash reports upload only to `FILEFLOW_CRASH_REPORT_URL` (HTTPS); the `example.com` endpoint is gone.
+- **B1 resolved as a side effect**: both typecheck errors disappeared (`is` unused import removed, `parseFFmpegCommand` deleted), so `npm run build` works again.
+- Tests: `tests/unit/security-policy.spec.ts`; `tests/security.spec.ts` extended (no generic bridge; `media://` serves media and refuses other files incl. a disguised symlink, via `net.fetch` in main; `openPath` blocks scripts). Smoke test locator made exact after the Phase 1 "Keep" relabel.
+- Known follow-up: `src/preload/index.ts` still has `any`-typed payloads; typed in Phase 3 with the listener fix (B2).
+
+## 2026-09-29 — Audit Phase 3: medium bugs (B2–B5, B7, B8, B10–B12)
+
+B1, B6 and B9 were already resolved in Phase 2.
+
+- **B2**: preload `on*` subscriptions go through one `subscribe()` helper that removes only its own listener (previously `removeAllListeners` killed every subscriber on the channel). Preload payload types no longer use `any`.
+- **B3**: Advanced Search builds its FTS5 `MATCH` from quoted prefix terms (`domain/search/fts-query.ts`), so input such as `foo-bar`, `a:b` or a stray `"` no longer throws.
+- **B4**: the AI tag command requires a concrete file extension (a model misread can no longer tag the whole index), matches on the indexed `extension` column, and inserts with `ON CONFLICT DO NOTHING` so already-tagged files never roll back the batch.
+- **B5**: duplicate scans replace the previous unresolved groups atomically in one transaction. Also fixed while there: `cancel()` now settles the scan promise (the IPC call used to hang forever), a crashed hash worker is retired instead of stalling the queue, and result lookup is O(1) instead of a linear `find` per hashed file.
+- **B7**: a scheduled workflow that throws is logged and always rescheduled instead of staying `running` forever.
+- **B8**: `settings:update` validates against an allow-list (`domain/settings/settings-update.ts`); `id` and unknown columns are rejected.
+- **B10**: CSV export escapes every field and neutralises spreadsheet formulas (`domain/shared/csv.ts`).
+- **B11**: renderer path display uses cross-platform helpers (`renderer/src/lib/paths.ts`) instead of splitting on `/`.
+- **B12**: Ollama generation requests time out after 60 s.
+- Found, not fixed (outside the audit): the Settings page's FFmpeg path is stored but `features/converter/ffmpeg-locator.ts` never reads it, so the setting currently has no effect.
+- Tests: `tests/unit/bug-fixes.spec.ts`.
+
+## 2026-09-29 — Audit Phase 4: performance (P1–P5)
+
+- **P1**: Searcher search / batch search and the duplicate scanner walk the tree with the new non-blocking `walkDirectoryAsync` and async `stat`, so a drive-wide scan no longer freezes every window and IPC call. Searcher collect and undo use `movePathAsync` (a cross-drive folder copy no longer blocks the main process). A batch-search entry matching several keywords is now stat-ed once.
+- **P2** — **decision**: search results render progressively (first 200, more on scroll via `IntersectionObserver`) rather than being virtualized per layout; see SYSTEM-ARCHITECTURE.md.
+- **P3**: every page except the Dashboard is lazy-loaded. Startup renderer JS went from 2.92 MB to 1.06 MB (−64%); the MP4 analyzer (recharts, jspdf) loads on first visit.
+- **P4**: search progress IPC throttled to ≤ 10 messages/s.
+- **P5**: Inter is bundled via `@fontsource/inter`; Google Fonts links and CSP allowances removed — the app now works fully offline.
+- **Found — needs a product decision**: `components/pages/SearcherPage.tsx` is not imported or routed anywhere (the sidebar's "Advanced Search" opens `AdvancedSearchPage`). Its main-process handlers remain reachable over IPC and are covered by the Phase 1/4 fixes; the page itself is currently dead UI.
+- Tests: `tests/unit/performance.spec.ts`.
+
+## 2026-09-29 — Audit Phase 5: UI/UX and accessibility (U1–U7)
+
+- **Drive Search routed** (decision by the user at the Phase 4 gate): `SearcherPage` is now reachable at `/drive-search` from the sidebar and command palette.
+- **U1**: reduced motion is enforced — `<MotionConfig>` for Framer Motion plus CSS for animations/transitions, honouring both the in-app setting and the OS preference.
+- **U2**: fixed 19 invalid Tailwind classes, which had rendered with no style (nonexistent shades such as `text-red-655`, `bg-transparent/30`, `border-white/40-t`, and double opacity like `bg-white/40/80`, which left four loading overlays with no background at all). The Drive Search drive dropdown is now opaque.
+- **U3**: dark mode. New `AppSettings.theme` (`light`/`dark`/`system`, **default `system`** per DESIGN-SYSTEM.md), DB migration, validation and a Settings control. Implemented as a generated mirrored palette (`assets/theme-dark.css`); verified by screenshots of Dashboard, Duplicates and Settings in both themes.
+- **U4**: `alert()` replaced by an app-wide toast system; the Duplicates inline banner also uses toasts.
+- **U5**: 19 icon-only buttons gained `aria-label`s; `Switch` now requires a `label` (Settings switches labelled; Theme select labelled).
+- **U6**: every page renders inside an `ErrorBoundary` with a retry action.
+- **U7**: MP4 repair progress is a real percentage (FFmpeg `time=` over the probed duration, `domain/shared/ffmpeg-progress.ts`) instead of a fixed 50%.
+- Tests: `tests/unit/ux.spec.ts`, `tests/e2e/ux.spec.ts` (route, theme + reduced-motion classes, accessible names).
+
+## 2026-09-29 — MP4 Analyzer: folder scans survive unreadable subfolders
+
+- **Bug**: scanning `~/Movies` failed outright with `EPERM: operation not permitted, scandir '~/Movies/TV'` — the Apple TV library is protected by macOS privacy controls, and the analyzer's recursive `readdir` threw on it, so the scan returned nothing.
+- **Fix**: `domain/mp4analyzer/find-mp4-files.ts` (`findMp4Files`) walks with `walkDirectoryAsync`, which gained an `onUnreadable` callback. Unreadable **subfolders** are skipped and sent to the renderer on the new `mp4analyzer:skippedFolders` event (shown as an info toast); only an unreadable **root** fails, with a `FolderNotReadableError` whose message explains how to grant access (System Settings → Privacy & Security). The MP4 page now shows that error instead of silently resetting.
+- Verified on a real `~/Movies`: 568 MP4s found, `Movies/TV` skipped. Tests: `tests/unit/find-mp4-files.spec.ts`.

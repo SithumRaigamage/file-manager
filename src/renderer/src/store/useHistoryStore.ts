@@ -40,8 +40,14 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     try {
       const res = await window.fileflow.history.revertBatch(batchId)
       if (res.ok) {
-        // Refresh batches after revert
+        // Refresh batches after revert (a partly reverted batch stays listed)
         await get().fetchBatches()
+        const { reverted, failed } = res.data
+        if (failed.length > 0) {
+          set({
+            error: `Undid ${reverted} item(s); ${failed.length} could not be undone and remain in history. ${failed[0].reason}`
+          })
+        }
       } else {
         set({ error: res.error.message })
       }

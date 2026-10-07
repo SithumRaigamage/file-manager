@@ -11,7 +11,7 @@
   id: string;
   name: string;
   type: "quick" | "smart";
-  quickRuleId?: "images" | "videos" | "docs" | "archives";
+  quickRuleId?: "images" | "videos" | "docs" | "archives" | "byDate";
   conditions?: SmartCondition[]; // for type: "smart"
   conditionLogic?: "AND" | "OR";
   action: { type: "move" | "copy"; destination: string };
@@ -62,18 +62,49 @@
   defaultDestructiveBehavior: 'prompt' | 'always-copy'
   reducedMotion: boolean
   telemetryOptIn: boolean // default false, see SYSTEM-ARCHITECTURE.md
+  mp4HistoryLimit: number // keep newest N MP4 Analyzer scans (default 20); <= 0 keeps all
 }
 ```
+
+A single row with `id = 'default'` is seeded at DB init (`INSERT OR IGNORE`); all settings reads/updates target it.
+
+### `Mp4Scan` (MP4 Integrity Analyzer scan history — table `mp4_scans`)
+
+```ts
+{
+  id: string
+  targetPath: string // folder or single file that was scanned
+  targetType: 'file' | 'folder'
+  startedAt: string
+  finishedAt: string
+  status: 'completed' | 'cancelled' // superseded scans are never saved
+  filesFound: number
+  filesScanned: number // < filesFound when cancelled
+  totalSize: number
+  healthy: number
+  corrupted: number // repairable + unrecoverable
+  repairable: number
+  unrecoverable: number
+  diff: { newlyCorrupted: number; fixed: number; newFiles: number; removedFiles: number } | null
+    // vs. previous *completed* scan of the same targetPath; null = first scan.
+    // removedFiles only counted when this scan completed.
+  results: Mp4FileResult[] // full per-file results incl. errorLogs + atomStructure (JSON)
+}
+```
+
+`Mp4FileResult.missingOnDisk` is computed when a scan is reopened (`fs.existsSync`), never stored.
 
 ## Indexing Strategy
 
 - `BatchRecord` indexed by `timestamp` (descending) for the Undo History view, and by `type` for filtered history views.
+- `Mp4Scan` indexed by `finishedAt` (history list, pruning) and by `(targetPath, finishedAt)` (previous-scan lookup for the diff). The history list never selects the `results` column.
 - `RuleSet.watchedFolder` indexed for fast lookup when the Watcher Service needs to match an incoming file-change event to its owning rule set.
 
 ## Data Integrity
 
 - **Orphaned watchers**: if a `watchedFolder` is deleted/moved outside the app, the Watcher Service must detect the failure and mark the `RuleSet` as `inactive` rather than silently failing.
 - **Duplicate/conflicting rule sets**: two active `RuleSet`s watching the same folder with overlapping conditions must be flagged to the user at creation time (see FEATURE-SPECIFICATION.md Organizer edge cases).
+- **MP4 scan history cleanup**: after each saved scan, all but the newest `AppSettings.mp4HistoryLimit` `Mp4Scan` rows are deleted. Count-based rather than age-based because each row can be several MB for large folders.
 - **History cleanup**: `BatchRecord` entries older than a configurable retention window (e.g. 90 days) are pruned automatically to avoid unbounded local storage growth, with a setting to disable auto-pruning for users who want a permanent audit log.
 
 ## Phasing

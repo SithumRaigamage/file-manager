@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
@@ -20,6 +21,10 @@ import {
 import { Mp4FileResult, CorruptionLevel } from '../../types/mp4analyzer'
 import { Badge } from '../ui/Badge'
 import { useMp4AnalyzerStore } from '../../store/mp4AnalyzerStore'
+import { toast } from '../../store/useToastStore'
+import { toMediaUrl } from '../../lib/media-url'
+import { formatBytes, formatDuration as formatDurationBase } from '../../lib/utils'
+import { getHealthScore } from '../../lib/mp4-health'
 
 interface FileDetailDrawerProps {
   file: Mp4FileResult | null
@@ -27,25 +32,8 @@ interface FileDetailDrawerProps {
   onRepairSuccess?: (newResult: Mp4FileResult) => void
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 function formatDuration(secs: number): string {
-  if (!secs || isNaN(secs)) return 'N/A'
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = Math.floor(secs % 60)
-  const mStr = m.toString().padStart(2, '0')
-  const sStr = s.toString().padStart(2, '0')
-  if (h > 0) {
-    return `${h.toString().padStart(2, '0')}:${mStr}:${sStr}`
-  }
-  return `${mStr}:${sStr}`
+  return formatDurationBase(secs, 'N/A')
 }
 
 export function FileDetailDrawer({
@@ -53,7 +41,7 @@ export function FileDetailDrawer({
   onClose,
   onRepairSuccess
 }: FileDetailDrawerProps): React.JSX.Element {
-  const { removeResult, removeFolderResults } = useMp4AnalyzerStore()
+  const trashFiles = useMp4AnalyzerStore((s) => s.trashFiles)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'diagnostics' | 'player' | 'structure' | 'logs'>(
     'diagnostics'
@@ -98,13 +86,17 @@ export function FileDetailDrawer({
   }
 
   const handleRunRepair = async (): Promise<void> => {
-    if (!file || !file.recommendation.command) return
+    if (file?.missingOnDisk) return
+    if (!file || !file.recommendation.repairId) return
     setRepairStatus('repairing')
     setRepairProgress(10)
     setRepairError(null)
 
     try {
-      const res = await window.api.mp4analyzer.runRepair(file.filePath, file.recommendation.command)
+      const res = await window.api.mp4analyzer.runRepair(
+        file.filePath,
+        file.recommendation.repairId
+      )
       if (res.success) {
         setRepairStatus('success')
         setRepairProgress(100)
@@ -153,15 +145,17 @@ export function FileDetailDrawer({
   const getConfidenceColor = (conf: 'high' | 'medium' | 'low'): string => {
     switch (conf) {
       case 'high':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-250'
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200'
       case 'medium':
-        return 'bg-amber-50 text-amber-700 border-amber-250'
+        return 'bg-amber-50 text-amber-700 border-amber-200'
       case 'low':
-        return 'bg-rose-50 text-rose-700 border-rose-250'
+        return 'bg-rose-50 text-rose-700 border-rose-200'
     }
   }
 
-  return (
+  // Portal to <body> so `fixed` positioning isn't trapped by a transformed
+  // ancestor (page transitions), which clipped the backdrop to the content area.
+  return createPortal(
     <AnimatePresence>
       {file && (
         <>
@@ -180,10 +174,10 @@ export function FileDetailDrawer({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 220 }}
-            className="fixed top-0 right-0 w-[520px] h-full bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100 overflow-hidden"
+            className="fixed top-0 right-0 w-[520px] max-w-full h-full bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="p-5 border-b border-gray-200 flex items-center justify-between bg-transparent">
               <div className="min-w-0 pr-4">
                 <h2 className="text-base font-bold text-gray-900 truncate" title={file.fileName}>
                   {file.fileName}
@@ -193,37 +187,34 @@ export function FileDetailDrawer({
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => window.api.showItemInFolder(file.filePath)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                  title="Open file location in Finder"
-                >
-                  <FolderOpen size={18} />
-                </button>
-                {file.corruptionLevel !== 'healthy' && (
-                  <button
+                {!file.missingOnDisk && (
+                  <button aria-label="Open file location in Finder"
+                    onClick={() => window.api.showItemInFolder(file.filePath)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                    title="Open file location in Finder"
+                  >
+                    <FolderOpen size={18} />
+                  </button>
+                )}
+                {file.corruptionLevel !== 'healthy' && !file.missingOnDisk && (
+                  <button aria-label="Move corrupted video to Trash"
                     onClick={async () => {
-                      try {
-                        const res = await window.api.mp4analyzer.deleteFile(file.filePath)
-                        if (res.success) {
-                          if (res.action === 'folder') {
-                            removeFolderResults(res.folderPath)
-                          } else if (res.action === 'file') {
-                            removeResult(res.filePath)
-                          }
-                          onClose()
-                        }
-                      } catch (err) {
-                        alert(`Failed to delete: ${(err as Error).message}`)
-                      }
+                      const error = await trashFiles([file.filePath])
+                      if (error) toast.error(error)
+                      else if (
+                        !useMp4AnalyzerStore
+                          .getState()
+                          .results.some((r) => r.filePath === file.filePath)
+                      )
+                        onClose()
                     }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-655 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
-                    title="Delete corrupted video file"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all cursor-pointer inline-flex items-center justify-center"
+                    title="Move corrupted video to Trash"
                   >
                     <Trash2 size={18} />
                   </button>
                 )}
-                <button
+                <button aria-label="Close details"
                   onClick={onClose}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 transition-all cursor-pointer inline-flex items-center justify-center"
                 >
@@ -232,8 +223,15 @@ export function FileDetailDrawer({
               </div>
             </div>
 
+            {file.missingOnDisk && (
+              <div className="px-5 py-2.5 text-xs font-medium text-gray-600 bg-gray-100/70 border-b border-gray-200">
+                This file no longer exists at this path. Showing results from the saved scan; repair
+                and delete are unavailable.
+              </div>
+            )}
+
             {/* Sub-Header Tabs */}
-            <div className="flex px-4 border-b border-gray-100 bg-gray-50/20 text-xs font-semibold text-gray-500">
+            <div className="flex px-4 border-b border-gray-200 bg-transparent text-xs font-semibold text-gray-500">
               <button
                 onClick={() => setActiveTab('diagnostics')}
                 className={`py-3 px-3 border-b-2 transition-all cursor-pointer ${
@@ -282,7 +280,7 @@ export function FileDetailDrawer({
               {activeTab === 'diagnostics' && (
                 <div className="space-y-6">
                   {/* Quick Status banner */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50/60 border border-gray-100 rounded-2xl">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
                     <div>
                       <span className="text-xs font-semibold text-gray-400 uppercase block">
                         Status
@@ -299,7 +297,7 @@ export function FileDetailDrawer({
                         Health Score
                       </span>
                       <span className="text-2xl font-black text-gray-800">
-                        {file.playbackVerification?.healthScore ?? 100}%
+                        {getHealthScore(file)}%
                       </span>
                     </div>
                   </div>
@@ -312,7 +310,7 @@ export function FileDetailDrawer({
                         <h4 className="text-xs font-bold uppercase tracking-wider text-red-900">
                           Diagnostics Error
                         </h4>
-                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-850">
+                        <p className="text-xs font-medium mt-1 leading-relaxed text-red-800">
                           {file.errorMsg}
                         </p>
                       </div>
@@ -325,7 +323,7 @@ export function FileDetailDrawer({
                       <Info size={14} className="stroke-[2.2]" /> File Metadata
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           File size
                         </span>
@@ -333,7 +331,7 @@ export function FileDetailDrawer({
                           {formatBytes(file.fileSize)}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Duration
                         </span>
@@ -341,7 +339,7 @@ export function FileDetailDrawer({
                           {formatDuration(file.metadata?.duration || 0)}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Resolution
                         </span>
@@ -349,7 +347,7 @@ export function FileDetailDrawer({
                           {file.metadata?.resolution || 'Unknown'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Frame rate
                         </span>
@@ -357,7 +355,7 @@ export function FileDetailDrawer({
                           {file.metadata?.fps ? `${file.metadata.fps} FPS` : 'Unknown'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Video codec
                         </span>
@@ -365,7 +363,7 @@ export function FileDetailDrawer({
                           {file.metadata?.codec || 'None'}
                         </span>
                       </div>
-                      <div className="p-3 bg-gray-50/30 border border-gray-100 rounded-xl">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           Audio codec
                         </span>
@@ -381,7 +379,7 @@ export function FileDetailDrawer({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <ShieldCheck size={14} className="stroke-[2.2]" /> Playability Scan
                     </h3>
-                    <div className="p-4 bg-gray-50/30 border border-gray-100 rounded-xl space-y-3">
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-xs font-medium text-gray-500">
                         <span>Total frames analyzed:</span>
                         <span className="font-bold text-gray-800">
@@ -415,7 +413,7 @@ export function FileDetailDrawer({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Terminal size={14} className="stroke-[2.2]" /> Repair & Recovery Tools
                     </h3>
-                    <div className="p-4 bg-gray-50/50 border border-gray-150 rounded-2xl space-y-4">
+                    <div className="p-4 bg-transparent border border-gray-200 rounded-2xl space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="text-xs text-gray-600 font-medium leading-relaxed">
                           {file.recommendation.action}
@@ -433,7 +431,7 @@ export function FileDetailDrawer({
                             <div className="bg-gray-900 rounded-xl p-3.5 pr-12 font-mono text-xs text-blue-400 break-all select-all leading-normal">
                               {file.recommendation.command}
                             </div>
-                            <button
+                            <button aria-label="Copy repair command"
                               onClick={() => copyToClipboard(file.recommendation.command!)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all cursor-pointer flex items-center justify-center"
                               title="Copy repair command"
@@ -448,15 +446,17 @@ export function FileDetailDrawer({
 
                           {/* Action Executor Runner */}
                           <div className="pt-1">
-                            {repairStatus === 'idle' && (
-                              <button
-                                onClick={handleRunRepair}
-                                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
-                              >
-                                <Hammer size={14} />
-                                Run Repair Automatically
-                              </button>
-                            )}
+                            {repairStatus === 'idle' &&
+                              !file.missingOnDisk &&
+                              file.recommendation.repairId && (
+                                <button
+                                  onClick={handleRunRepair}
+                                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
+                                >
+                                  <Hammer size={14} />
+                                  Run Repair Automatically
+                                </button>
+                              )}
 
                             {repairStatus === 'repairing' && (
                               <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-3 space-y-2">
@@ -495,7 +495,7 @@ export function FileDetailDrawer({
                             )}
 
                             {repairStatus === 'error' && (
-                              <div className="bg-red-50 border border-red-150 rounded-xl p-3.5 space-y-2 text-xs text-red-800">
+                              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 space-y-2 text-xs text-red-800">
                                 <div className="font-bold text-red-900 flex items-center gap-1.5">
                                   <AlertTriangle size={14} className="stroke-[2.2]" />
                                   Automatic Repair Failed
@@ -523,7 +523,7 @@ export function FileDetailDrawer({
               {activeTab === 'player' && (
                 <div className="space-y-4">
                   {file.corruptionLevel === 'unrecoverable' ? (
-                    <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50 text-center">
+                    <div className="flex flex-col items-center justify-center py-12 px-4 border border-dashed border-gray-200 rounded-2xl bg-transparent text-center">
                       <ShieldCheck size={36} className="text-gray-400 mb-2 stroke-[1.5]" />
                       <h4 className="text-sm font-bold text-gray-700">Video Player Offline</h4>
                       <p className="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
@@ -536,7 +536,7 @@ export function FileDetailDrawer({
                       <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-900">
                         {/* Play custom media protocol */}
                         <video
-                          src={`media://${file.filePath}`}
+                          src={toMediaUrl(file.filePath)}
                           controls
                           className="w-full h-full object-contain"
                           preload="metadata"
@@ -565,7 +565,7 @@ export function FileDetailDrawer({
                       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <Layers size={14} className="stroke-[2.2]" /> Atom Box Hierarchy
                       </h3>
-                      <div className="p-4 bg-gray-50/40 border border-gray-100 rounded-xl font-mono text-xs text-gray-600 max-h-[460px] overflow-y-auto space-y-1.5 scrollbar-thin">
+                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl font-mono text-xs text-gray-600 max-h-[460px] overflow-y-auto space-y-1.5 scrollbar-thin">
                         {file.atomStructure.map((atomPath, index) => {
                           const parts = atomPath.split('/')
                           const indent = parts.length - 1
@@ -578,7 +578,7 @@ export function FileDetailDrawer({
                             >
                               <span className="text-gray-300">└─</span>
                               <span
-                                className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-650'}`}
+                                className={`${indent === 0 ? 'font-bold text-blue-600' : 'text-gray-600'}`}
                               >
                                 {name}
                               </span>
@@ -623,7 +623,7 @@ export function FileDetailDrawer({
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/30 flex items-center gap-3">
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center gap-3">
               <button
                 onClick={() => window.api.showItemInFolder(file.filePath)}
                 className="px-4 py-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-emerald-200 transition-all flex items-center gap-1.5"
@@ -634,30 +634,25 @@ export function FileDetailDrawer({
               {file.corruptionLevel !== 'healthy' && (
                 <button
                   onClick={async () => {
-                    try {
-                      const res = await window.api.mp4analyzer.deleteFile(file.filePath)
-                      if (res.success) {
-                        if (res.action === 'folder') {
-                          removeFolderResults(res.folderPath)
-                        } else if (res.action === 'file') {
-                          removeResult(res.filePath)
-                        }
-                        onClose()
-                      }
-                    } catch (err) {
-                      alert(`Failed to delete: ${(err as Error).message}`)
-                    }
+                    const error = await trashFiles([file.filePath])
+                    if (error) toast.error(error)
+                    else if (
+                      !useMp4AnalyzerStore
+                        .getState()
+                        .results.some((r) => r.filePath === file.filePath)
+                    )
+                      onClose()
                   }}
                   className="px-4 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl text-xs cursor-pointer shadow-xs active:bg-rose-200 transition-all flex items-center gap-1.5"
                 >
                   <Trash2 size={14} />
-                  Delete File
+                  Move to Trash
                 </button>
               )}
               <div className="flex-1" />
               <button
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all"
+                className="px-4 py-2 border border-gray-200 bg-white/40 hover:bg-transparent text-gray-700 font-medium rounded-xl text-xs cursor-pointer shadow-xs active:bg-gray-100 transition-all"
               >
                 Close Details
               </button>
@@ -665,6 +660,7 @@ export function FileDetailDrawer({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

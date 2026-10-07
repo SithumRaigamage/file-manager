@@ -7,12 +7,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-blue-600 text-white shadow hover:bg-blue-700 active:bg-blue-800',
-  secondary: 'bg-gray-100 text-gray-800 hover:bg-gray-200 active:bg-gray-300',
-  outline: 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100',
-  ghost: 'text-gray-700 hover:bg-gray-100 active:bg-gray-200',
-  destructive: 'bg-red-500 text-white shadow hover:bg-red-600 active:bg-red-700',
-  link: 'text-blue-600 underline-offset-4 hover:underline p-0 h-auto'
+  default: 'bg-indigo-600/90 backdrop-blur text-white shadow-md hover:bg-indigo-500 hover:shadow-indigo-500/25 hover:shadow-lg active:bg-indigo-700 border border-indigo-500/50',
+  secondary: 'bg-white/50 backdrop-blur-sm border border-white/40 text-gray-800 shadow-sm hover:bg-white/70 hover:border-white/60 active:bg-white/40',
+  outline: 'border border-gray-300/50 bg-white/20 backdrop-blur-sm text-gray-700 hover:bg-white/40 active:bg-white/20 hover:border-gray-300/80',
+  ghost: 'text-gray-700 hover:bg-white/40 hover:backdrop-blur-sm active:bg-white/20',
+  destructive: 'bg-red-500/90 backdrop-blur text-white shadow hover:bg-red-500 hover:shadow-red-500/25 hover:shadow-lg active:bg-red-600 border border-red-500/50',
+  link: 'text-indigo-600 underline-offset-4 hover:underline p-0 h-auto'
 }
 
 const sizeClasses = {

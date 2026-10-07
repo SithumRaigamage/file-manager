@@ -12,7 +12,7 @@ export interface RuleSetDomain {
   id: string;
   name: string;
   type: 'quick' | 'smart';
-  quickRuleId?: 'images' | 'videos' | 'docs' | 'archives' | string;
+  quickRuleId?: 'images' | 'videos' | 'docs' | 'archives' | 'byDate' | string;
   conditions?: SmartCondition[];
   conditionLogic?: 'AND' | 'OR';
   action: { type: 'move' | 'copy'; destination: string };

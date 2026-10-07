@@ -4,6 +4,7 @@ import { useConverterStore } from '../../store/useConverterStore'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { FilePreviewList, PreviewListItem } from '../shared/FilePreviewList'
+import { basename, stem } from '../../lib/paths'
 
 export function ConverterPage(): React.JSX.Element {
   const {
@@ -26,8 +27,7 @@ export function ConverterPage(): React.JSX.Element {
       setPreset({
         id: 'web-balanced',
         name: 'Web (Balanced MP4)',
-        targetContainer: 'mp4',
-        ffmpegArgs: ['-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '192k']
+        targetContainer: 'mp4'
       })
     }
   }, [initProgressListener, preset, setPreset])
@@ -40,7 +40,9 @@ export function ConverterPage(): React.JSX.Element {
       const res = await window.fileflow.organizer.listFolder(dir)
       if (res.ok && res.data) {
         // filter media files
-        const media = res.data.filter((f: any) => ['.mp4', '.mkv', '.avi', '.mov'].includes(f.ext.toLowerCase()))
+        const media = res.data.filter((f: any) =>
+          ['.mp4', '.mkv', '.avi', '.mov'].includes(f.ext.toLowerCase())
+        )
         setSelectedFiles(media.map((f: any) => f.path))
       }
     }
@@ -52,15 +54,15 @@ export function ConverterPage(): React.JSX.Element {
   // Map to shared preview list format
   // We show queued items (selectedFiles) that aren't yet jobs, and active jobs.
   const mappedPreviewItems: PreviewListItem[] = []
-  
+
   // Pending selected
   selectedFiles.forEach((file, idx) => {
     // If it's not already in jobs
-    const isJob = jobList.find(j => j.inputPath === file)
+    const isJob = jobList.find((j) => j.inputPath === file)
     if (!isJob) {
       mappedPreviewItems.push({
         id: `pending-${idx}`,
-        originalName: file.split('/').pop() || '',
+        originalName: basename(file),
         newName: `Will convert to ${preset?.targetContainer || '...'}`,
         status: 'pending'
       })
@@ -71,16 +73,16 @@ export function ConverterPage(): React.JSX.Element {
   jobList.forEach((job) => {
     mappedPreviewItems.push({
       id: job.id,
-      originalName: job.inputPath.split('/').pop() || '',
-      newName: `${job.inputPath.split('/').pop()?.split('.')[0]}_converted.${preset?.targetContainer || 'mp4'}`,
+      originalName: basename(job.inputPath),
+      newName: `${stem(job.inputPath)}_converted.${preset?.targetContainer || 'mp4'}`,
       status: job.status,
       progress: job.progress
     })
   })
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-6 pt-6 pb-4 border-b border-gray-100 bg-white">
+    <div className="flex flex-col h-full bg-transparent">
+      <div className="px-6 pt-6 pb-4 border-b border-white/20 bg-white/5 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">High-Speed Converter</h2>
@@ -133,30 +135,42 @@ export function ConverterPage(): React.JSX.Element {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button 
-                variant={preset?.id === 'web-balanced' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'web-balanced' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'web-balanced', name: 'Web (Balanced MP4)', targetContainer: 'mp4', ffmpegArgs: ['-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '192k']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'web-balanced',
+                    name: 'Web (Balanced MP4)',
+                    targetContainer: 'mp4'
+                  })
+                }
               >
                 Web Balanced (MP4)
               </Button>
-              <Button 
-                variant={preset?.id === 'archive-h265' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'archive-h265' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'archive-h265', name: 'Archive (H.265 MKV)', targetContainer: 'mkv', ffmpegArgs: ['-c:v', 'libx265', '-crf', '28', '-preset', 'slow', '-c:a', 'copy']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'archive-h265',
+                    name: 'Archive (H.265 MKV)',
+                    targetContainer: 'mkv'
+                  })
+                }
               >
                 Archive (H.265 MKV)
               </Button>
-              <Button 
-                variant={preset?.id === 'audio-mp3' ? 'default' : 'outline'} 
+              <Button
+                variant={preset?.id === 'audio-mp3' ? 'default' : 'outline'}
                 className="w-full justify-start"
-                onClick={() => setPreset({
-                  id: 'audio-mp3', name: 'Audio Only (MP3)', targetContainer: 'mp3', ffmpegArgs: ['-vn', '-c:a', 'libmp3lame', '-b:a', '192k']
-                })}
+                onClick={() =>
+                  setPreset({
+                    id: 'audio-mp3',
+                    name: 'Audio Only (MP3)',
+                    targetContainer: 'mp3'
+                  })
+                }
               >
                 Extract Audio (MP3)
               </Button>
@@ -165,36 +179,47 @@ export function ConverterPage(): React.JSX.Element {
         </div>
 
         {/* Right Column: Preview & Action */}
-        <div className="flex-1 flex flex-col bg-white border rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md border border-white/40 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b bg-transparent flex items-center justify-between">
             <h3 className="font-semibold text-slate-700 flex items-center gap-2">
               <Eye size={16} />
               Conversion Queue
             </h3>
             <div className="flex gap-2">
-              <Button variant="destructive" size="sm" onClick={() => {
-                jobList.filter(j => j.status === 'processing' || j.status === 'pending').forEach(j => cancelConversion(j.id))
-              }} disabled={jobList.length === 0}>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  jobList
+                    .filter((j) => j.status === 'processing' || j.status === 'pending')
+                    .forEach((j) => cancelConversion(j.id))
+                }}
+                disabled={jobList.length === 0}
+              >
                 <XCircle size={14} className="mr-2" />
                 Cancel All
               </Button>
-              <Button size="sm" onClick={() => enqueueConversion()} disabled={selectedFiles.length === 0 || isLoading}>
+              <Button
+                size="sm"
+                onClick={() => enqueueConversion()}
+                disabled={selectedFiles.length === 0 || isLoading}
+              >
                 <Play size={14} className="mr-2" />
                 Start Conversion
               </Button>
             </div>
           </div>
-          
+
           <div className="flex-1 p-4 flex flex-col min-h-0 relative">
             {error && (
-              <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-10 flex items-center justify-center">
                 <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 shadow-sm max-w-md text-center">
                   <p className="font-semibold">Error</p>
                   <p className="text-sm mt-1">{error}</p>
                 </div>
               </div>
             )}
-            
+
             <FilePreviewList items={mappedPreviewItems} />
           </div>
         </div>

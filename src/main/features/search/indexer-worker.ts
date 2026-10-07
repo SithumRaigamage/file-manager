@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
+import { walkDirectory } from '../../domain/shared/directory-walker';
 
 interface IndexerMessage {
   command: 'start' | 'cancel';
@@ -68,25 +69,14 @@ async function startIndexing(dirPath: string, dbPath: string) {
     }
   }
 
-  function walk(currentDir: string) {
-    if (isCancelled) return;
-    
-    let entries;
-    try {
-      entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    } catch {
-      return; // Skip folders we can't read
-    }
-
-    for (const entry of entries) {
-      if (isCancelled) break;
-      
-      const fullPath = path.join(currentDir, entry.name);
+  walkDirectory(dirPath, {
+    shouldContinue: () => !isCancelled,
+    onEntry: (fullPath, entry) => {
       scanned++;
-      
+
       try {
         const stats = fs.statSync(fullPath);
-        
+
         currentBatch.push({
           id: randomUUID(),
           path: fullPath,
@@ -100,17 +90,12 @@ async function startIndexing(dirPath: string, dbPath: string) {
         if (currentBatch.length >= BATCH_SIZE) {
           flush();
         }
-
-        if (entry.isDirectory()) {
-          walk(fullPath);
-        }
       } catch {
         // Skip files we can't stat
       }
     }
-  }
+  });
 
-  walk(dirPath);
   flush(); // flush remaining
   db.close();
 }
